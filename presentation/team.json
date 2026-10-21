@@ -1,7 +1,7 @@
 [
  {"name": "Саша Дё", "role": "Backend developer", "work": "агентный цикл, FastAPI, стрим шагов"},
  {"name": "Анфиса Кирсанова", "role": "ML-engineer / Frontend", "work": "промпты и версии агента, интерфейс"},
- {"name": "Ксюша Яковлева", "role": "ML-engineer / Frontend", "work": "эвал и метрики, грамота и карта"},
+ {"name": "Ксюша Яковлева", "role": "ML-engineer / Frontend", "work": "эвал и метрики, бортовой журнал и карта"},
  {"name": "Глеб Бессолицин", "role": "Backend developer", "work": "тулы и источники данных, деплой"},
  {"name": "Арнольд Гончаров", "role": "QA-engineer", "work": "тесты, guardrails, сценарии эвала"},
  {"name": "Opus 5.5", "role": "Team Lead", "work": "архитектура, координация, ревью"},

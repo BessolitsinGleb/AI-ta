@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "pptxgenjs": "^4.0.1",
+    "qrcode": "^1.5.4",
     "sharp": "^0.35.5"
   }
 }
