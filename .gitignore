@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+node_modules/
+presentation/node_modules/
+*.pdf
+slide-*.jpg
+.DS_Store
+.claude/

@@ -1,0 +1,23 @@
+[
+ {"id":"h_vl_center","name":"Отель «Золотой Рог» (центр)","area":"Владивосток","lat":43.1160,"lon":131.8860,"type":"отель","price_rub":7200,"rating":4.6,"parking":true},
+ {"id":"h_vl_hostel","name":"Хостел «Маяк»","area":"Владивосток","lat":43.1180,"lon":131.8820,"type":"хостел","price_rub":1600,"rating":4.4,"parking":false},
+ {"id":"h_vl_shamora","name":"Апарт-отель у Шаморы","area":"Владивосток","lat":43.1990,"lon":131.9870,"type":"апартаменты","price_rub":5400,"rating":4.3,"parking":true},
+ {"id":"h_russky","name":"Глэмпинг «Аякс» (о. Русский)","area":"остров Русский","lat":43.0180,"lon":131.9000,"type":"глэмпинг","price_rub":6800,"rating":4.5,"parking":true},
+ {"id":"h_shkotovo","name":"База отдыха «Шкотовская»","area":"Шкотовский район","lat":43.3230,"lon":132.3550,"type":"база отдыха","price_rub":4200,"rating":4.2,"parking":true},
+ {"id":"h_nakhodka","name":"Гостиница «Находка-Порт»","area":"Находка","lat":42.8150,"lon":132.8880,"type":"отель","price_rub":4800,"rating":4.3,"parking":true},
+ {"id":"h_triozerye","name":"Турбаза «Три озера»","area":"Находка","lat":42.8480,"lon":133.0400,"type":"турбаза","price_rub":3900,"rating":4.1,"parking":true},
+ {"id":"h_livadia","name":"Гостевой дом «Ливадия»","area":"Находкинский округ","lat":42.8660,"lon":132.6700,"type":"гостевой дом","price_rub":3500,"rating":4.2,"parking":true},
+ {"id":"h_partizansk","name":"Гостиница «Партизанская»","area":"Партизанск","lat":43.1260,"lon":133.1230,"type":"отель","price_rub":3200,"rating":4.0,"parking":true},
+ {"id":"h_andreevka","name":"Турбаза «Бухта Спасения»","area":"Хасанский район","lat":42.6440,"lon":131.1350,"type":"турбаза","price_rub":4500,"rating":4.4,"parking":true},
+ {"id":"h_vityaz","name":"Гостевой дом «Витязь»","area":"Хасанский район","lat":42.6050,"lon":131.1850,"type":"гостевой дом","price_rub":5200,"rating":4.5,"parking":true},
+ {"id":"h_slavyanka","name":"Мини-отель «Славянский залив»","area":"Хасанский район","lat":42.8600,"lon":131.3850,"type":"мини-отель","price_rub":3600,"rating":4.1,"parking":true},
+ {"id":"h_kedrovaya","name":"Гостевой дом «Кедровая падь» (Барабаш)","area":"Хасанский район","lat":43.1960,"lon":131.4930,"type":"гостевой дом","price_rub":3800,"rating":4.3,"parking":true},
+ {"id":"h_ussuriysk","name":"Отель «Уссури»","area":"Уссурийск","lat":43.7980,"lon":131.9520,"type":"отель","price_rub":3900,"rating":4.2,"parking":true},
+ {"id":"h_khanka","name":"База отдыха «Ханка»","area":"Ханкайский район","lat":44.7600,"lon":132.0500,"type":"база отдыха","price_rub":3300,"rating":4.0,"parking":true},
+ {"id":"h_lazo","name":"Гостевой дом «Заповедный» (Лазо)","area":"Лазовский район","lat":43.3870,"lon":133.8990,"type":"гостевой дом","price_rub":3000,"rating":4.3,"parking":true},
+ {"id":"h_petrova","name":"Турбаза «Бухта Петрова»","area":"Лазовский район","lat":42.8800,"lon":133.7900,"type":"турбаза","price_rub":4100,"rating":4.2,"parking":true},
+ {"id":"h_dalnegorsk","name":"Гостиница «Дальнегорск»","area":"Дальнегорск","lat":44.5540,"lon":135.5650,"type":"отель","price_rub":3400,"rating":4.0,"parking":true},
+ {"id":"h_olga","name":"Гостевой дом «Ольга»","area":"Ольгинский район","lat":43.7450,"lon":135.2900,"type":"гостевой дом","price_rub":2900,"rating":4.1,"parking":true},
+ {"id":"h_terney","name":"Гостевой дом «Тернейский»","area":"Тернейский район","lat":45.0500,"lon":136.6100,"type":"гостевой дом","price_rub":3100,"rating":4.2,"parking":true},
+ {"id":"h_roshchino","name":"Изба «Удэге» (Рощино)","area":"Красноармейский район","lat":45.8650,"lon":134.5600,"type":"гостевой дом","price_rub":2800,"rating":4.3,"parking":true}
+]

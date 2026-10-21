@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Амба — летописец странствий по Приморью</title>
+  <meta name="description" content="AI-агент, который составляет план поездки по Приморскому краю и сверяет его с погодой, расписаниями и режимом работы мест.">
+  <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Ruslan+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="sea-glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Амба — на главную">
+      <span class="brand-mascot" data-mascot></span>
+      <span class="brand-text"><b>Амба</b><small>лѣтописецъ странствій по Приморью</small></span>
+    </a>
+    <div class="topbar-right">
+      <span id="mode-badge" class="badge" hidden></span>
+      <label class="version-pick">Версія агента
+        <select id="version" aria-label="Версия пайплайна агента"></select>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">AI-агентъ · Приморскій край</p>
+        <h1>Скажи, куда душа просится, — Амба начертает путевую грамоту</h1>
+        <p class="lead">Агент сам соберёт места, маршрут, ночёвку и погоду, а потом сверит план с реальностью: открыты ли музеи, не льёт ли дождь, есть ли бензин и успеешь ли на последний автобус.</p>
+
+        <form id="ask" class="ask" autocomplete="off">
+          <label for="q" class="ask-label">Челобитная</label>
+          <textarea id="q" rows="3" maxlength="600" required
+            placeholder="Хочу на эти выходные поездить по Приморью на машине с ночёвкой, не больше двух дней"></textarea>
+          <div class="ask-row">
+            <div class="chips" id="transport" role="group" aria-label="Способ передвижения">
+              <button type="button" class="chip" data-mode="пешком" aria-pressed="false"><span aria-hidden="true">🥾</span> Пешком</button>
+              <button type="button" class="chip" data-mode="на велосипеде" aria-pressed="false"><span aria-hidden="true">🚲</span> Велосипед</button>
+              <button type="button" class="chip" data-mode="на автобусе" aria-pressed="false"><span aria-hidden="true">🚌</span> Автобус</button>
+              <button type="button" class="chip" data-mode="на электричке" aria-pressed="false"><span aria-hidden="true">🚆</span> Поезд</button>
+              <button type="button" class="chip" data-mode="на машине" aria-pressed="false"><span aria-hidden="true">🚗</span> Машина</button>
+            </div>
+            <button class="seal-btn" type="submit" id="submit"><span>Начертать грамоту</span></button>
+          </div>
+          <div class="examples" id="examples" aria-label="Примеры запросов"></div>
+        </form>
+      </div>
+      <div class="hero-mascot" aria-hidden="true">
+        <div class="hero-mascot-art" data-mascot></div>
+        <div class="speech">Гой еси, путникъ! Куда держимъ путь?</div>
+      </div>
+    </section>
+
+    <div id="intents" class="intents" hidden aria-live="polite"></div>
+
+    <section class="workspace" id="workspace" hidden>
+      <div class="col-main">
+        <div class="toolbar">
+          <label class="switch"><input type="checkbox" id="old" checked> <span>Дореформенная орѳографія</span></label>
+          <button type="button" class="ghost-btn" id="print" disabled>Сохранить грамоту</button>
+        </div>
+        <div id="result" aria-live="polite"></div>
+      </div>
+      <aside class="col-side">
+        <div class="panel map-panel">
+          <h3>Чертёжъ пути</h3>
+          <div id="map" role="region" aria-label="Карта маршрута"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="panel trace-panel">
+          <h3>Лѣтопись трудовъ агента</h3>
+          <ol id="trace" class="trace"></ol>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Данные: Open-Meteo · OSRM · OpenStreetMap / Nominatim · Википедия · офлайн-датасеты (жильё, расписания, наличие топлива — мок)</span>
+    <span>Т-Банк × Сириус · командный проект</span>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

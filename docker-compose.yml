@@ -1,0 +1,9 @@
+services:
+  amba:
+    build: .
+    image: amba-travel-agent:latest
+    container_name: amba
+    env_file: .env
+    ports:
+      - "${PORT:-8000}:8000"
+    restart: unless-stopped
