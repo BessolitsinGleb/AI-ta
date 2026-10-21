@@ -117,6 +117,9 @@ make eval                   # замеры v1, v2, v3 → eval/results/summary.m
 ./deploy/deploy.sh user@IP  # Docker на сервере → http://IP:8000
 ```
 
+**Railway:** New Project → Deploy from GitHub repo → этот репозиторий; в Variables добавить `OPENROUTER_API_KEY`;
+в Settings → Networking нажать Generate Domain. Сборка по `Dockerfile` и `railway.json`, каждый пуш в `main` — новый деплой.
+
 ## Тесты
 
 | Набор | Тестов | Что покрывает |
