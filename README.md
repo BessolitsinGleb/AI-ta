@@ -111,6 +111,8 @@ make dev                    # http://localhost:8000
 
 Без ключа приложение работает в демо-режиме: тот же агентный цикл и те же тулы, но вместо модели — правила.
 
+**Живое демо:** https://amba-production-3ab7.up.railway.app
+
 ```bash
 make test                   # pytest + тесты фронта
 make eval                   # замеры v1, v2, v3 → eval/results/summary.md
