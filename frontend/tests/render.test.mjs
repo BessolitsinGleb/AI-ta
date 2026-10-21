@@ -86,3 +86,9 @@ test("даты и значки погоды", () => {
   assert.equal(weatherIcon("ясно"), "☀");
   assert.equal(weatherIcon("туман"), "🌫");
 });
+
+test("демо-режим: не показываем оценку токенов как расход", () => {
+  const html = renderPlan({ ...result, metrics: { latency_s: 1, total_tokens: 3000, cost_usd: 0, estimated: true } });
+  assert.match(html, /расход токенов не считается/);
+  assert.ok(!/3\s000 токенов/.test(html));
+});

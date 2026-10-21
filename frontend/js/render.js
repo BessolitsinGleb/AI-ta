@@ -102,8 +102,11 @@ export function renderFoot(result) {
   const m = result.metrics || {};
   const parts = [];
   if (m.latency_s != null) parts.push(`Собран за ${String(m.latency_s).replace(".", ",")} с`);
-  if (m.total_tokens) parts.push(`${Number(m.total_tokens).toLocaleString("ru-RU")} токенов`);
-  if (m.cost_usd) parts.push(`$${Number(m.cost_usd).toFixed(4)}`);
+  if (m.estimated) parts.push("демо-режим без LLM: расход токенов не считается");
+  else {
+    if (m.total_tokens) parts.push(`${Number(m.total_tokens).toLocaleString("ru-RU")} токенов`);
+    if (m.cost_usd) parts.push(`$${Number(m.cost_usd).toFixed(4)}`);
+  }
   if (m.llm_calls) parts.push(`шагов агента: ${m.llm_calls}`);
   if (result.model) parts.push(`модель ${esc(result.model)}`);
   const src = (result.sources || []).length ? `<span>Источники: ${(result.sources || []).map(esc).join(", ")}</span>` : "";

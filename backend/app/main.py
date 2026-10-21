@@ -5,10 +5,11 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .agent import run_agent, today_local, versions
 from .config import FRONTEND_DIR, settings
@@ -35,12 +36,39 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Амба — AI-ассистент путешествий по Приморью", version="1.0.0", lifespan=lifespan)
 
 
+MAX_BODY_BYTES = 16 * 1024  # запрос + ответы на вопросы укладываются в пару килобайт
+
+
+@app.middleware("http")
+async def limit_body(request: Request, call_next):
+    """Слишком большое тело запроса отклоняем до разбора JSON."""
+    if request.method == "POST":
+        size = request.headers.get("content-length", "")
+        if not size.isdigit():
+            return JSONResponse({"detail": "Нужен заголовок Content-Length"}, status_code=411)
+        if int(size) > MAX_BODY_BYTES:
+            return JSONResponse({"detail": f"Запрос слишком большой: максимум {MAX_BODY_BYTES // 1024} КБ"}, status_code=413)
+    return await call_next(request)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """Понятная ошибка без эха присланных данных."""
+    errors = [{"field": ".".join(str(p) for p in e.get("loc", [])[1:]) or "body", "problem": e.get("type", "invalid")}
+              for e in exc.errors()[:10]]
+    return JSONResponse({"detail": "Некорректный запрос", "errors": errors}, status_code=422)
+
+
 class Answer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     question: str = Field("", max_length=200)
     answer: str = Field("", max_length=200)
 
 
 class PlanRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # лишние поля — ошибка 422, а не молчаливое игнорирование
+
     query: str = Field(..., min_length=1, max_length=2000)
     version: str | None = None
     answers: list[Answer] | None = Field(None, max_length=4)

@@ -201,6 +201,8 @@ async def run_agent(
 
     def finish(status: str, **extra: Any) -> dict:
         metrics = {**usage.dict(), "latency_s": round(time.perf_counter() - t0, 2), "steps": len(trace),
+                   # демо-планировщик не тратит денег: его «токены» — грубая оценка, не биллинг
+                   "estimated": getattr(llm, "model", "").startswith("demo/"),
                    "tools_called": tools_called}
         return {"status": status, "query": query, "version": ver.key, "version_label": ver.label,
                 "model": getattr(llm, "model", ver.model), "intents": intents.dict(), "metrics": metrics,

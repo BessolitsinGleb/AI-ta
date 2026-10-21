@@ -47,3 +47,27 @@ def test_stream_emits_events_and_result():
     assert types[0] == "start" and types[-1] == "result"
     assert "tool" in types and "check" in types
     assert events[-1]["result"]["status"] == "plan"
+
+
+def test_extra_fields_rejected_without_echo():
+    r = client.post("/api/plan", json={"query": "В субботу в Находку", "admin": True, "answers": [{"question": "q", "answer": "a", "x": 1}]})
+    assert r.status_code == 422
+    body = r.json()
+    assert {e["field"] for e in body["errors"]} >= {"admin", "answers.0.x"}
+    assert "В субботу" not in r.text  # присланные данные не возвращаются
+
+
+def test_too_long_answer_rejected_without_echo():
+    secret = "СЕКРЕТ" * 50  # 300 символов > 200
+    r = client.post("/api/plan", json={"query": "В субботу в Находку", "answers": [{"question": "кухня", "answer": secret}]})
+    assert r.status_code == 422 and "СЕКРЕТ" not in r.text
+
+
+def test_body_size_limit():
+    r = client.post("/api/plan", content=b'{"query": "' + b"a" * 20000 + b'"}', headers={"Content-Type": "application/json"})
+    assert r.status_code == 413
+
+
+def test_demo_metrics_marked_as_estimate():
+    body = client.post("/api/plan", json={"query": "В субботу на автобусе в Находку на один день", "answers": []}).json()
+    assert body["metrics"]["estimated"] is True

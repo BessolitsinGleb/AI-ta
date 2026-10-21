@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/LLM-OpenRouter-F0641E" alt="OpenRouter">
   <img src="https://img.shields.io/badge/карта-OpenStreetMap-3D5A66?logo=openstreetmap&logoColor=white" alt="OpenStreetMap">
-  <img src="https://img.shields.io/badge/тесты-108%20passed-2E6B62" alt="Тесты">
+  <img src="https://img.shields.io/badge/тесты-113%20passed-2E6B62" alt="Тесты">
 </p>
 
 **Амба** — веб-ассистент для поездок по Приморскому краю. Пишете запрос обычными словами, например
@@ -132,8 +132,8 @@ make eval                   # замеры v1, v2, v3 → eval/results/summary.m
 
 | Набор | Тестов | Что покрывает |
 |---|---|---|
-| `backend/tests` | 96 | интенты, фильтр, все тулы (внешние API замоканы), сверка, агентный цикл, API и стрим, клиент OpenRouter, метрики |
-| `frontend/tests` | 7 | рендер плана и журнала, ссылки, вопросы, экранирование HTML |
+| `backend/tests` | 100 | интенты, фильтр, все тулы (внешние API замоканы), сверка, агентный цикл, API и стрим, клиент OpenRouter, метрики |
+| `frontend/tests` | 8 | рендер плана и журнала, ссылки, вопросы, экранирование HTML |
 | `e2e` | 5 | настоящий браузер: запрос → план → карта, журнал, вопрос → план со ссылками, отказ, телефон |
 
 ## Структура
