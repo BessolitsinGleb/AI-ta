@@ -369,7 +369,7 @@ function imgSize(file) {
     if (isDemo) {
       s.addText("Демо-прогон без LLM: проверка обвязки эвала. Итоговые цифры — после прогона с моделями OpenRouter", { x: 0.5, y: 2.6, w: 9, h: 0.25, fontSize: 10, italic: true, color: C.accent1, margin: 0, isTextBox: true });
     }
-    s.addNotes("Три версии на одном наборе из 20 запросов. v1 — бейзлайн: короткий промпт, сырые ответы тулов. v2 — сжатие контекста, пред-фильтр и цикл исправлений. v3 — тот же пайплайн на лёгкой модели. Смотрим качество, токены и время.");
+    s.addNotes("Три версии на одном наборе из 10 запросов. v1 — бейзлайн: короткий промпт, сырые ответы тулов. v2 — сжатие контекста, фильтр и цикл исправлений. v3 — исправления, найденные эвалом, и модель DeepSeek. Смотрим качество, токены и время.");
   }
 
   // 12. Выводы
@@ -378,13 +378,11 @@ function imgSize(file) {
     s.addText("Что дали улучшения", { placeholder: "title" });
     const [v1, v2, v3] = [evals[0], evals[1], evals[2]].map((e) => e && e.aggregate);
     const pct = (a, b) => (a && b ? Math.round((1 - b / a) * 100) : null);
-    const tokenCut = pct(v1 && v1.tokens_avg, v2 && v2.tokens_avg);
-    const qDelta = v1 && v2 ? (v2.quality - v1.quality) : null;
-    const costCut = v2 && v3 && v2.cost_usd_avg ? pct(v2.cost_usd_avg, v3.cost_usd_avg) : null;
+    const tokenCut = pct(v1 && v1.tokens_avg, v3 && v3.tokens_avg);
     const stats = [
-      [tokenCut != null ? `−${tokenCut}%` : "—", "токенов на запрос после сжатия контекста (v1 → v2)"],
-      [qDelta != null ? `${qDelta >= 0 ? "+" : ""}${qDelta.toFixed(2)}` : "—", "к качеству за счёт сверки и цикла исправлений (v1 → v2)"],
-      [costCut != null ? `−${costCut}%` : (v3 ? `${v3.quality.toFixed(2)}` : "—"), costCut != null ? "стоимости на лёгкой модели (v2 → v3)" : "качество v3 на лёгкой модели"],
+      [tokenCut != null ? `−${tokenCut}%` : "—", "токенов на запрос: сжатие контекста (v1 → v3)"],
+      [v1 && v3 ? `${Math.round(v1.converge_rate * 100)} → ${Math.round(v3.converge_rate * 100)}%` : "—", "планов сходятся со всеми проверками"],
+      [v3 ? `$${v3.cost_usd_avg.toFixed(3)}` : "—", "за запрос на DeepSeek V4.1 Flash"],
     ];
     stats.forEach(([n, t], i) => {
       const x = 0.5 + i * 3.05;
@@ -395,9 +393,9 @@ function imgSize(file) {
     s.addText([
       { text: "Геометрия маршрута и почасовая погода не нужны модели — карту дорисовывает сервер", options: { bullet: true, breakLine: true } },
       { text: "Пред-фильтр отклоняет нецелевые запросы за 0 токенов и 0 секунд", options: { bullet: true, breakLine: true } },
-      { text: "Валидатор ловит то, что модель «забыла»: выходной день музея, закат, последний рейс", options: { bullet: true } },
+      { text: "Эвал нашёл 3 бага агента: обрезанный план, days строкой, зацикливание на невыполнимом запросе — исправлены в v3", options: { bullet: true } },
     ], { x: 0.5, y: 3.35, w: 9, h: 1.6, fontSize: 13, color: C.text1, valign: "top", paraSpaceAfter: 6, margin: 0 });
-    s.addNotes("Главные выводы по замерам: сжатие контекста резко снижает токены без потери качества, сверка поднимает долю сходящихся планов, лёгкая модель дешевле — цена вопроса видна в таблице.");
+    s.addNotes("v1 и v2 — на бесплатной MiniMax, v3 — на DeepSeek с исправлениями. Главные выводы по замерам: сжатие контекста резко снижает токены без потери качества, сверка поднимает долю сходящихся планов, лёгкая модель дешевле — цена вопроса видна в таблице.");
   }
 
   // 13. Команда

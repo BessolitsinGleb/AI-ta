@@ -137,3 +137,37 @@ async def test_demo_end_to_end_plans_converge(query):
     r = await run_agent(query, "v2", llm=DemoLLM(), today=WED, offline=True)
     assert r["status"] == "plan"
     assert r["check_summary"]["errors"] == 0, [c for c in r["checks"] if not c["ok"]]
+
+
+@pytest.mark.asyncio
+async def test_days_as_json_string_are_parsed():
+    plan = {**GOOD_PLAN, "days": json.dumps(GOOD_PLAN["days"], ensure_ascii=False)}
+    r = await run_agent("В субботу на машине по Владивостоку", "v2", llm=ScriptedLLM([[call("submit_plan", {"plan": plan})]]), today=WED, offline=True)
+    assert r["status"] == "plan" and len(r["plan"]["days"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_truncated_answer_gets_compact_nudge():
+    class Truncating(ScriptedLLM):
+        async def chat(self, messages, tools):
+            resp = await super().chat(messages, tools)
+            if len(self.seen) == 1:
+                resp.finish_reason = "length"
+            return resp
+
+    llm = Truncating(["{\"plan\": {\"days\": [", [call("submit_plan", {"plan": GOOD_PLAN})]])
+    r = await run_agent("В субботу на машине по Владивостоку", "v2", llm=llm, today=WED, offline=True)
+    assert r["status"] == "plan"
+    assert "обрезан" in llm.seen[1][-1]["content"]
+
+
+@pytest.mark.asyncio
+async def test_last_steps_nudge_forces_submit():
+    def maybe_submit(messages):
+        if "Шаги заканчиваются" in str(messages[-1].get("content")):
+            return [call("submit_plan", {"plan": GOOD_PLAN}, 99)]
+        return [call("search_places", {"area": "Находка"}, len(messages))]
+
+    llm = ScriptedLLM([maybe_submit] * 12)
+    r = await run_agent("В субботу на машине по Владивостоку", "v2", llm=llm, today=WED, offline=True)
+    assert r["status"] == "plan" and r["metrics"]["llm_calls"] == 11

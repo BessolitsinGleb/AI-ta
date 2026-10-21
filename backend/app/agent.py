@@ -18,7 +18,7 @@ from .config import TZ, settings
 from .guardrails import precheck
 from .intents import parse_intents
 from .llm import ChatModel, LLMError, OpenRouterLLM, Usage
-from .prompts import FINISH_TOOLS, REPAIR_NUDGE, baseline_prompt, full_prompt
+from .prompts import FINISH_TOOLS, LAST_STEPS_NUDGE, REPAIR_NUDGE, TRUNCATED_NUDGE, baseline_prompt, full_prompt
 from .tools import ALL_TOOLS, ToolContext
 from .tools.routing import build_route
 from .validator import plan_transport, summarize, validate_plan
@@ -46,7 +46,7 @@ def versions() -> dict[str, AgentVersion]:
                            prompt="baseline", max_steps=10, max_repairs=0),
         "v2": AgentVersion("v2", "Сжатие контекста + сверка", settings.model_v2, compact=True, prefilter=True,
                            repair=True, prompt="full", max_steps=12),
-        "v3": AgentVersion("v3", "Финальная: v2 на DeepSeek", settings.model_v3, compact=True, prefilter=True,
+        "v3": AgentVersion("v3", "Финальная: v2 + исправления + DeepSeek", settings.model_v3, compact=True, prefilter=True,
                            repair=True, prompt="full", max_steps=12),
     }
 
@@ -116,7 +116,15 @@ def _extract_plan(args: dict) -> dict:
             plan = json.loads(plan)
         except json.JSONDecodeError:
             plan = {}
-    return plan if isinstance(plan, dict) else {}
+    if not isinstance(plan, dict):
+        return {}
+    for key in ("days", "cautions", "weather_notes", "fuel_stops"):  # вложенные поля тоже бывают строками
+        if isinstance(plan.get(key), str):
+            try:
+                plan[key] = json.loads(plan[key])
+            except json.JSONDecodeError:
+                plan[key] = [] if key == "days" else [plan[key]]
+    return plan
 
 
 async def _noop(_: dict) -> None:
@@ -204,6 +212,7 @@ async def run_agent(
     tool_schemas = [t.schema() for t in ALL_TOOLS.values()] + FINISH_TOOLS
     repairs_left = ver.max_repairs
     nudged = False
+    truncated = False
     last_plan: dict | None = None
     last_checks: list = []
 
@@ -223,6 +232,11 @@ async def run_agent(
 
         if not calls:
             text = (msg.get("content") or "").strip()
+            if resp.finish_reason == "length" and ver.repair and not truncated:
+                truncated = True  # план не влез в лимит токенов — просим компактнее
+                messages.append({"role": "assistant", "content": text[:2000] or "…"})
+                messages.append({"role": "user", "content": TRUNCATED_NUDGE})
+                continue
             if ver.repair and not nudged:
                 nudged = True
                 messages.append({"role": "assistant", "content": text or "…"})
@@ -263,6 +277,8 @@ async def run_agent(
         results = await asyncio.gather(*(run_one(c) for c in regular))
         for call, content in results:
             messages.append({"role": "tool", "tool_call_id": call["id"], "content": content})
+        if ver.repair and not final and step == ver.max_steps - 2:
+            messages.append({"role": "user", "content": LAST_STEPS_NUDGE})  # не даём агенту уйти в бесконечный сбор данных
 
         for idx, call in enumerate(final):
             name = call["function"]["name"]

@@ -47,6 +47,7 @@ class LLMResponse:
     message: dict
     usage: dict = field(default_factory=dict)
     model: str = ""
+    finish_reason: str = ""
 
 
 class ChatModel(Protocol):
@@ -92,7 +93,8 @@ class OpenRouterLLM:
                         raise LLMError(f"OpenRouter: {json.dumps(data['error'], ensure_ascii=False)[:300]}")
                     choice = (data.get("choices") or [{}])[0]
                     msg = choice.get("message") or {}
-                    return LLMResponse(message=msg, usage=data.get("usage") or {}, model=data.get("model", self.model))
+                    return LLMResponse(message=msg, usage=data.get("usage") or {}, model=data.get("model", self.model),
+                                       finish_reason=str(choice.get("finish_reason") or ""))
                 except (httpx.HTTPError, LLMError) as exc:
                     last_err = exc
                     if isinstance(exc, LLMError) and "OpenRouter 4" in str(exc) and "429" not in str(exc):

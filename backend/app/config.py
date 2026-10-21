@@ -27,7 +27,7 @@ class Settings:
     model_v1: str = field(default_factory=lambda: os.getenv("MODEL_V1", "minimax/minimax-m3.1-flash:free"))
     model_v2: str = field(default_factory=lambda: os.getenv("MODEL_V2", "minimax/minimax-m3.1-flash:free"))
     model_v3: str = field(default_factory=lambda: os.getenv("MODEL_V3", "deepseek/deepseek-v4.1-flash"))
-    llm_max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_MAX_TOKENS", "4096")))
+    llm_max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_MAX_TOKENS", "8192")))
     llm_timeout_s: float = field(default_factory=lambda: float(os.getenv("LLM_TIMEOUT_S", "90")))
     http_timeout_s: float = field(default_factory=lambda: float(os.getenv("HTTP_TIMEOUT_S", "12")))
     user_agent: str = field(

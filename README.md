@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/LLM-OpenRouter-F0641E" alt="OpenRouter">
   <img src="https://img.shields.io/badge/карта-OpenStreetMap-3D5A66?logo=openstreetmap&logoColor=white" alt="OpenStreetMap">
-  <img src="https://img.shields.io/badge/тесты-104%20passed-2E6B62" alt="Тесты">
+  <img src="https://img.shields.io/badge/тесты-107%20passed-2E6B62" alt="Тесты">
 </p>
 
 **Амба** — веб-ассистент для поездок по Приморскому краю. Пишете запрос обычными словами, например
@@ -86,7 +86,15 @@ flowchart LR
 | Модель | MiniMax M3.1 Flash | MiniMax M3.1 Flash | DeepSeek V4.1 Flash |
 
 <!-- EVAL:START -->
-Результаты — в [`eval/results`](eval/results).
+10 запросов: 7 поездок разными видами транспорта и 3 нецелевых.
+
+| Вариант | Модель | Качество | Тул верный | Интент (сверка) | План сходится | Guardrails | Токены / запрос | $ / запрос | Время, с (ср / p50) |
+|---|---|---|---|---|---|---|---|---|---|
+| v1 · Бейзлайн | `minimax/minimax-m3.1-flash:free` | **0.64** | 70% | 0.55 | 43% | 67% | 87 860 | 0.0000 | 68.47 / 67.03 |
+| v2 · Сжатие контекста + сверка | `minimax/minimax-m3.1-flash:free` | **0.75** | 80% | 0.57 | 57% | 100% | 52 098 | 0.0000 | 65.65 / 65.07 |
+| v3 · Финальная: v2 + исправления + DeepSeek | `deepseek/deepseek-v4.1-flash` | **1.00** | 100% | 1.00 | 100% | 100% | 32 462 | 0.0052 | 50.54 / 22.79 |
+
+**Итог:** сжатие контекста срезало токены на 41% (v1 → v2), фильтр довёл отказы до 100%, а исправления, найденные эвалом, и DeepSeek довели долю сходящихся планов с 43% до 100% при $0.005 за запрос. Подробно — [`eval/results`](eval/results).
 <!-- EVAL:END -->
 
 **Качество** = 0,5 × «верный тул» + 0,5 × доля пройденных проверок сверки. «Верный тул» — агент вызвал все
@@ -113,7 +121,7 @@ make eval                   # замеры v1, v2, v3 → eval/results/summary.m
 
 | Набор | Тестов | Что покрывает |
 |---|---|---|
-| `backend/tests` | 86 | интенты, фильтр, все тулы (внешние API замоканы), сверка, агентный цикл, API и стрим, клиент OpenRouter, метрики |
+| `backend/tests` | 89 | интенты, фильтр, все тулы (внешние API замоканы), сверка, агентный цикл, API и стрим, клиент OpenRouter, метрики |
 | `frontend/tests` | 14 | рендер плана и грамоты, даты, экранирование HTML |
 | `e2e` | 4 | настоящий браузер: запрос → план → карта, переключение вида, отказ, телефон |
 
