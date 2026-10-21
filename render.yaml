@@ -1,0 +1,14 @@
+# Render Blueprint: New → Blueprint → этот репозиторий. Ключ OPENROUTER_API_KEY Render спросит при создании.
+services:
+  - type: web
+    name: amba
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: AGENT_VERSION
+        value: v3
