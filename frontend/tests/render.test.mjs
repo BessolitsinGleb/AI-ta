@@ -30,7 +30,7 @@ test("грамота: заголовок, буквица, главы, ночле
   assert.match(html, /Ночлегъ/);
   assert.match(html, /4\s800 ₽/);
   assert.match(html, /рейсъ bus_vl_nk/);
-  assert.match(html, /8\s412 токеновъ/);
+  assert.match(html, /8\s412 токенов/);
   assert.match(html, /Источники: Open-Meteo/);
   assert.match(html, /Что вѣдать надобно/);
   assert.ok(!html.includes("<Сестра>"), "HTML экранируется");
@@ -53,7 +53,7 @@ test("печать сверки: противоречия, предупрежд�
 test("отказ пред-фильтром — без токенов", () => {
   const html = renderRefusal({ status: "declined", refusal: { category: "other_region", message: "Не Приморье", by: "prefilter" } });
   assert.match(html, /Земли сіи мнѣ невѣдомы/);
-  assert.match(html, /0 токеновъ/);
+  assert.match(html, /0 токенов/);
 });
 
 test("строки летописи трудов", () => {

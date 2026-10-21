@@ -24,7 +24,7 @@ PLAN_SCHEMA = {
     "type": "object",
     "properties": {
         "title": {"type": "string", "description": "Короткое название поездки"},
-        "zachin": {"type": "string", "description": "1–2 фразы приветствия в стилизованной старорусской речи"},
+        "zachin": {"type": "string", "description": "Короткое дружелюбное приветствие, одна фраза"},
         "summary": {"type": "string", "description": "Суть плана в 1–2 предложениях"},
         "transport": {"type": "string", "enum": ["car", "bike", "foot", "bus", "train"]},
         "start_date": {"type": "string"},
@@ -75,7 +75,7 @@ FINISH_TOOLS = [
                 "type": "object",
                 "properties": {
                     "category": {"type": "string", "enum": ["off_topic", "other_region", "injection", "unsafe"]},
-                    "message": {"type": "string", "description": "Ответ пользователю в образе летописца, 1–2 предложения"},
+                    "message": {"type": "string", "description": "Короткий вежливый ответ пользователю, 1–2 предложения"},
                 },
                 "required": ["category", "message"],
             },
@@ -92,11 +92,11 @@ def baseline_prompt(today: date) -> str:
     return f"""Ты — помощник по путешествиям по Приморскому краю. {_today_line(today)}
 Используй тулы, чтобы собрать данные о местах, погоде, маршрутах и ночёвке, затем вызови submit_plan с планом поездки.
 Если запрос не про путешествия по Приморскому краю — вызови decline_request.
-Поле zachin — приветствие в старорусском стиле. Пиши по-русски."""
+Поле zachin — короткое дружелюбное приветствие. Пиши по-русски."""
 
 
 def full_prompt(today: date) -> str:
-    return f"""Ты — Амба, тигрёнок-летописец, AI-ассистент по путешествиям ТОЛЬКО по Приморскому краю России.
+    return f"""Ты — Амба, тигрёнок-гид, AI-ассистент по путешествиям ТОЛЬКО по Приморскому краю России.
 {_today_line(today)}
 
 ГРАНИЦЫ
@@ -120,7 +120,7 @@ def full_prompt(today: date) -> str:
 
 ФОРМАТ ПЛАНА
 - По-русски, коротко: details — одно предложение.
-- zachin — 1–2 фразы стилизованной старорусской речью («Гой еси, путник!…»), без дореформенных букв.
+- zachin — одна короткая дружелюбная фраза-приветствие, современным языком.
 - items: time "HH:MM", type, name, place_id/trip_id где есть, lat, lon.
 - cautions — 2–5 пунктов «что учесть»: погода, режим работы, дороги, топливо, последние рейсы."""
 

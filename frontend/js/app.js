@@ -80,7 +80,7 @@ function mascotHtml(cls) {
 }
 
 function setLoading() {
-  const text = state.view === "manuscript" ? "Амба пишетъ грамоту…" : "Амба собирает план…";
+  const text = state.view === "manuscript" ? "Амба оформляет грамоту…" : "Амба собирает план…";
   $("#result").innerHTML = `<div class="loading">${mascotHtml("writing")}<p>${text}</p></div>`;
 }
 

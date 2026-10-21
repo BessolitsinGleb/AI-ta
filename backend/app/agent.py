@@ -46,7 +46,7 @@ def versions() -> dict[str, AgentVersion]:
                            prompt="baseline", max_steps=10, max_repairs=0),
         "v2": AgentVersion("v2", "Сжатие контекста + сверка", settings.model_v2, compact=True, prefilter=True,
                            repair=True, prompt="full", max_steps=12),
-        "v3": AgentVersion("v3", "v2 на лёгкой модели", settings.model_v3, compact=True, prefilter=True,
+        "v3": AgentVersion("v3", "Финальная: v2 на DeepSeek", settings.model_v3, compact=True, prefilter=True,
                            repair=True, prompt="full", max_steps=12),
     }
 
@@ -156,7 +156,7 @@ def make_llm(version: AgentVersion) -> ChatModel:
         from .demo_llm import DemoLLM  # без ключа приложение работает на детерминированном демо-планировщике
 
         return DemoLLM()
-    return OpenRouterLLM(version.model)
+    return OpenRouterLLM(version.model, api_key=settings.key_for(version.key))
 
 
 async def run_agent(

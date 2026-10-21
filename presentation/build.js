@@ -25,7 +25,7 @@ const H = THEME.colors; // hex — для опций, где схемные цв
 function loadEval() {
   const dir = path.join(ROOT, "eval", "results");
   const pick = (v) => {
-    for (const name of [`${v}.json`, `${v}_demo.json`]) {
+    for (const name of [`${v}_core10.json`, `${v}.json`, `${v}_demo.json`]) {
       const p = path.join(dir, name);
       if (fs.existsSync(p)) return { ...JSON.parse(fs.readFileSync(p, "utf8")), demo: name.includes("demo") };
     }
@@ -52,7 +52,7 @@ function imgSize(file) {
 
   const pres = new pptxgen();
   pres.layout = "LAYOUT_16x9"; // 10 × 5.625 in
-  pres.title = "Амба — AI-летописец странствий по Приморью";
+  pres.title = "Амба — AI-гид по Приморью";
   pres.author = "Команда «Амба»";
   pres.company = "Т-Банк × Сириус";
   pres.theme = { headFontFace: THEME.headFontFace, bodyFontFace: THEME.bodyFontFace };
@@ -102,12 +102,12 @@ function imgSize(file) {
   {
     const s = slide("DARK", "Начало");
     s.addText("Т-Банк × Сириус · командный проект", { x: 0.6, y: 0.55, w: 5.6, h: 0.3, fontSize: 12, color: H.accent2, bold: true, charSpacing: 2, margin: 0, isTextBox: true });
-    s.addText("Амба — AI-летописец странствий по Приморью", { placeholder: "title" });
+    s.addText("Амба — AI-гид по Приморью", { placeholder: "title" });
     s.addText("Агент собирает план поездки из открытых данных и сверяет его с реальным миром: погода, режим работы, расписания, заправки", { placeholder: "body" });
     s.addImage({ data: mascot, x: 6.5, y: 0.75, w: 3.0, h: 3.25, objectName: "mascot" });
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.45, y: 4.2, w: 3.1, h: 0.62, rectRadius: 0.12, fill: { color: C.background2 }, line: { color: H.accent2, width: 1.5 }, objectName: "speech" });
-    s.addText("Гой еси, путникъ! Куда держимъ путь?", { x: 6.5, y: 4.2, w: 3.0, h: 0.62, align: "center", valign: "middle", fontFace: THEME.headFontFace, italic: true, fontSize: 12, color: C.text1, margin: 0, isTextBox: true });
-    s.addNotes("Представляем Амбу — тигрёнка-летописца. Это веб-ассистент: пишешь запрос обычными словами, получаешь готовый план поездки по Приморскому краю, оформленный как старорусская грамота. Главное — план не просто сгенерирован, а сверен с реальностью.");
+    s.addText("Привет! Куда поедем?", { x: 6.5, y: 4.2, w: 3.0, h: 0.62, align: "center", valign: "middle", fontFace: THEME.headFontFace, italic: true, fontSize: 12, color: C.text1, margin: 0, isTextBox: true });
+    s.addNotes("Представляем Амбу — тигрёнка-гида. Это веб-ассистент: пишешь запрос обычными словами, получаешь готовый план поездки по Приморскому краю. Главное — план не просто сгенерирован, а сверен с реальностью.");
   }
 
   // 2. Задача
@@ -305,7 +305,9 @@ function imgSize(file) {
   {
     const s = slide("LIGHT", "Замеры");
     s.addText("Eval: как понять, что стало лучше", { placeholder: "title" });
-    const stats = [["20", "фиксированных запросов"], ["15", "поездок: все виды транспорта"], ["5", "нецелевых: другой регион, инъекции, оффтоп"]];
+    const rows0 = (evals[0] && evals[0].rows) || [];
+    const nAll = rows0.length || 20, nDecl = rows0.filter((r) => r.converges === null).length || 5;
+    const stats = [[String(nAll), "фиксированных запросов в прогоне"], [String(nAll - nDecl), "поездок: машина, автобус, электричка, велосипед, пешком"], [String(nDecl), "нецелевых: другой регион, «забудь правила», оффтоп"]];
     stats.forEach(([n, t], i) => {
       const x = 0.5 + i * 3.05;
       s.addText(n, { x, y: 1.1, w: 2.9, h: 0.85, fontSize: 48, bold: true, color: C.accent1, margin: 0, isTextBox: true });
@@ -448,9 +450,9 @@ function imgSize(file) {
   {
     const s = slide("DARK", "Итоги");
     s.addText("Вопросы? И в путь!", { placeholder: "title" });
-    s.addText("Амба сверит план с погодой, расписаниями и заправками — а грамоту можно взять с собой", { placeholder: "body" });
+    s.addText("Амба сверит план с погодой, расписаниями и заправками — а готовый план можно сохранить в PDF", { placeholder: "body" });
     s.addImage({ data: mascot, x: 6.5, y: 0.9, w: 3.0, h: 3.25, objectName: "mascot-final" });
-    s.addText("Писано тигрёнкомъ Амбою лѣта 7535", { x: 6.2, y: 4.4, w: 3.6, h: 0.4, fontFace: THEME.headFontFace, italic: true, fontSize: 12, color: H.accent2, align: "center", margin: 0, isTextBox: true });
+    s.addText("Хорошей дороги!", { x: 6.2, y: 4.4, w: 3.6, h: 0.4, fontFace: THEME.headFontFace, italic: true, fontSize: 12, color: H.accent2, align: "center", margin: 0, isTextBox: true });
     s.addNotes("Спасибо! Готовы ответить на вопросы и показать демо вживую.");
   }
 

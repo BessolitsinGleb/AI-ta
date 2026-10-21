@@ -48,6 +48,7 @@ async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--versions", nargs="+", default=["v1", "v2", "v3"])
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--ids", nargs="+", default=None, help="прогнать только эти запросы, например q01 q02")
     ap.add_argument("--concurrency", type=int, default=3)
     ap.add_argument("--demo", action="store_true", help="без LLM: детерминированный планировщик (проверка обвязки)")
     ap.add_argument("--tag", default="")
@@ -55,6 +56,8 @@ async def main() -> None:
     if not settings.openrouter_api_key and not args.demo:
         sys.exit("Нет OPENROUTER_API_KEY в .env — добавьте ключ или запустите с --demo")
     cases = json.loads((ROOT / "eval" / "queries.json").read_text(encoding="utf-8"))
+    if args.ids:
+        cases = [c for c in cases if c["id"] in set(args.ids)]
     if args.limit:
         cases = cases[: args.limit]
     RESULTS.mkdir(parents=True, exist_ok=True)

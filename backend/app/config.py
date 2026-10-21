@@ -22,11 +22,11 @@ class Settings:
     openrouter_base_url: str = field(
         default_factory=lambda: os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     )
-    default_version: str = field(default_factory=lambda: os.getenv("AGENT_VERSION", "v2"))
+    default_version: str = field(default_factory=lambda: os.getenv("AGENT_VERSION", "v3"))
     # Модели для версий пайплайна можно переопределить без правки кода.
-    model_v1: str = field(default_factory=lambda: os.getenv("MODEL_V1", "openai/gpt-4.1-mini"))
-    model_v2: str = field(default_factory=lambda: os.getenv("MODEL_V2", "openai/gpt-4.1-mini"))
-    model_v3: str = field(default_factory=lambda: os.getenv("MODEL_V3", "google/gemini-3.1-flash-lite"))
+    model_v1: str = field(default_factory=lambda: os.getenv("MODEL_V1", "minimax/minimax-m3.1-flash:free"))
+    model_v2: str = field(default_factory=lambda: os.getenv("MODEL_V2", "minimax/minimax-m3.1-flash:free"))
+    model_v3: str = field(default_factory=lambda: os.getenv("MODEL_V3", "deepseek/deepseek-v4.1-flash"))
     llm_max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_MAX_TOKENS", "4096")))
     llm_timeout_s: float = field(default_factory=lambda: float(os.getenv("LLM_TIMEOUT_S", "90")))
     http_timeout_s: float = field(default_factory=lambda: float(os.getenv("HTTP_TIMEOUT_S", "12")))
@@ -38,6 +38,11 @@ class Settings:
     max_query_chars: int = 600
     # Офлайн-режим: внешние API не вызываются, только датасеты (для тестов и демо без сети).
     offline: bool = field(default_factory=lambda: os.getenv("OFFLINE_MODE", "0") == "1")
+
+
+    def key_for(self, version: str) -> str:
+        """Отдельный ключ на версию (OPENROUTER_API_KEY_V1…), иначе общий."""
+        return os.getenv(f"OPENROUTER_API_KEY_{version.upper()}", "") or self.openrouter_api_key
 
 
 settings = Settings()

@@ -29,8 +29,8 @@ const TRANSPORT = { car: "на машинѣ", bike: "на велосипедѣ",
 export function weatherLine(w, old = true) {
   if (!w) return "";
   const temp = w.tmin != null && w.tmax != null ? `${Math.round(w.tmin)}…${Math.round(w.tmax)}°` : "";
-  const parts = [w.summary, temp, w.precip_mm != null ? `осадки ${w.precip_mm} мм` : "", w.wind_max_ms != null ? `вѣтеръ ${Math.round(w.wind_max_ms)} м/с` : "",
-    w.sunset ? `закатъ ${w.sunset}` : ""].filter(Boolean);
+  const parts = [w.summary, temp, w.precip_mm != null ? `осадки ${w.precip_mm} мм` : "", w.wind_max_ms != null ? `${old ? "вѣтеръ" : "ветер"} ${Math.round(w.wind_max_ms)} м/с` : "",
+    w.sunset ? `${old ? "закатъ" : "закат"} ${w.sunset}` : ""].filter(Boolean);
   const risk = (w.risks || []).length ? ` <b class="ms-risk">⚠ ${t(w.risks.join(", "), old)}</b>` : "";
   return `<div class="ms-weather"><span class="ms-weather-label">${old ? "Небесныя знаменія" : "Погода"}:</span> ${t(parts.join(" · "), old)}${risk}</div>`;
 }
@@ -52,8 +52,8 @@ export function renderDay(day, index, old = true) {
     ? `<div class="ms-lodging"><span aria-hidden="true">☾</span> ${old ? "Ночлегъ" : "Ночёвка"}: <b>${t(day.lodging.name, old)}</b>${day.lodging.price_rub ? ` · ${Number(day.lodging.price_rub).toLocaleString("ru-RU")} ₽` : ""}</div>`
     : "";
   return `<section class="ms-day" data-day="${n}">
-    <h3 class="ms-day-title"><span class="ms-glava">Глава</span><span class="ms-glava-num">${cyrillicNumeral(n, { html: true })}</span>${t(day.title || `День ${ORDINALS[index] || n}`, old)}</h3>
-    <div class="ms-date">${old ? oldDate(day.date, { html: true }) : esc(day.date)}</div>
+    <h3 class="ms-day-title"><span class="ms-glava">Глава</span><span class="ms-glava-num">${old ? cyrillicNumeral(n, { html: true }) : n}</span>${t(day.title || `День ${ORDINALS[index] || n}`, old)}</h3>
+    <div class="ms-date">${old ? oldDate(day.date, { html: true }) : esc(humanDate(day.date))}</div>
     ${weatherLine(day.weather, old)}
     <ol class="ms-items">${(day.items || []).map((it) => renderItem(it, old)).join("")}</ol>
     ${lod}
@@ -73,9 +73,9 @@ export function renderChecks(checks = [], summary = {}, old = true) {
 export function renderMetrics(m = {}, model = "") {
   const parts = [];
   if (m.latency_s != null) parts.push(`${String(m.latency_s).replace(".", ",")} с`);
-  if (m.total_tokens != null) parts.push(`${Number(m.total_tokens).toLocaleString("ru-RU")} токеновъ`);
+  if (m.total_tokens != null) parts.push(`${Number(m.total_tokens).toLocaleString("ru-RU")} токенов`);
   if (m.cost_usd) parts.push(`$${Number(m.cost_usd).toFixed(4)}`);
-  if (m.llm_calls != null) parts.push(`шаговъ агента ${m.llm_calls}`);
+  if (m.llm_calls != null) parts.push(`шагов агента: ${m.llm_calls}`);
   if (model) parts.push(esc(model));
   return parts.join(" · ");
 }
@@ -95,7 +95,7 @@ export function renderManuscript(result, { old = true, now = new Date() } = {}) 
       <div class="ms-ornament" aria-hidden="true"></div>
       <header class="ms-head">
         <h2 class="ms-title">${t(plan.title || "Путевая грамота", old)}</h2>
-        ${transport ? `<div class="ms-transport">${esc(old ? transport : transport.replace(/ъ$/, ""))}</div>` : ""}
+        ${transport ? `<div class="ms-transport">${esc(old ? transport : (TRANSPORT_RU[plan.transport] || "").toLowerCase())}</div>` : ""}
         ${plan.summary ? `<p class="ms-summary">${t(plan.summary, old)}</p>` : ""}
       </header>
       <p class="ms-zachin"><span class="bukvitsa" aria-hidden="true">${esc(first)}</span><span class="sr-only">${esc(first)}</span>${esc(rest)}</p>
@@ -120,7 +120,7 @@ export function renderRefusal(result, { old = true } = {}) {
     <div class="sheet">
       <h2 class="ms-title">${esc(titles[r.category] || "Отказная грамота")}</h2>
       <p class="ms-zachin">${t(r.message || "", old)}</p>
-      <p class="ms-metrics">${r.by === "prefilter" ? "Отклонено стражей у воротъ — безъ вызова LLM, 0 токеновъ" : renderMetrics(result.metrics, result.model)}</p>
+      <p class="ms-metrics">${r.by === "prefilter" ? "Отклонено фильтром до вызова модели: 0 токенов" : renderMetrics(result.metrics, result.model)}</p>
     </div>
     <div class="scroll-rod" aria-hidden="true"></div>
   </article>`;

@@ -201,7 +201,7 @@ class DemoLLM:
             cautions.append(f"Последний рейс обратно — {trip_back['last_departure']}.")
         plan = {
             "title": f"{area}: {'выходные' if it.weekend else f'{n_days} дн.'} {'с ночёвкой' if n_days > 1 else ''}".strip(),
-            "zachin": "Гой еси, добрый путник! Внемли грамоте сей, что начертал тебе летописец Амба о землях Приморских.",
+            "zachin": "Привет! Вот план поездки — всё проверил по погоде, расписаниям и режиму работы.",
             "summary": f"Маршрут по направлению «{area}» на {n_days} дн. {MODE_RU.get(mode, '')} с учётом погоды и режима работы мест.",
             "transport": mode if mode in ("car", "bike", "foot", "bus", "train") else "car",
             "start_date": dates[0].isoformat(), "end_date": dates[-1].isoformat(),
