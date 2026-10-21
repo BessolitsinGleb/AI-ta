@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { esc, humanDate, renderChecks, renderManuscript, renderNotice, renderPlan, renderRefusal, renderTraceLine, weatherIcon } from "../js/render.js";
+import { esc, humanDate, linksHtml, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, weatherIcon } from "../js/render.js";
 
 const result = {
   status: "plan",
@@ -23,37 +23,28 @@ const result = {
   },
 };
 
-test("грамота: заголовок, буквица, главы, ночлег, метрики, источники", () => {
-  const html = renderManuscript(result, { old: true, now: new Date("2026-10-21T12:00:00") });
-  assert.match(html, /class="bukvitsa"[^>]*>Г</);
-  assert.match(html, /Глава<\/span><span class="ms-glava-num"><span class="cyr-num"/);
-  assert.match(html, /Ночлегъ/);
-  assert.match(html, /4\s800 ₽/);
-  assert.match(html, /рейсъ bus_vl_nk/);
-  assert.match(html, /8\s412 токенов/);
-  assert.match(html, /Источники: Open-Meteo/);
-  assert.match(html, /Что вѣдать надобно/);
-  assert.ok(!html.includes("<Сестра>"), "HTML экранируется");
+test("бортовой журнал: заголовок, координаты, ссылки, печать, без старорусского", () => {
+  const html = renderLogbook(result);
+  assert.match(html, /Бортовой журнал/);
+  assert.match(html, /Суббота, 24 октября/);
+  assert.match(html, /lb-stamp bad/);
+  assert.match(html, /Перед выходом/);
+  assert.ok(!html.includes("<Сестра>"));
+  assert.ok(!/ъ\b|ѣ/.test(html.replace(/<[^>]+>/g, "")));
 });
 
-test("современный вид без дореформенной орфографии", () => {
-  const html = renderManuscript(result, { old: false });
-  assert.match(html, /Что учесть/);
-  assert.match(html, /Ночёвка/);
-  assert.ok(!html.includes("путникъ"));
+test("ссылки: только https, открываются в новой вкладке", () => {
+  const html = linksHtml([{ title: "На карте", url: "https://yandex.ru/maps/?text=x" }, { title: "Плохая", url: "javascript:alert(1)" }]);
+  assert.match(html, /target="_blank" rel="noopener noreferrer"/);
+  assert.ok(!html.includes("javascript"));
+  assert.equal(linksHtml([]), "");
 });
 
-test("печать сверки: противоречия, предупреждения", () => {
-  const html = renderChecks(result.checks, result.check_summary);
-  assert.match(html, /ms-check bad/);
-  assert.match(html, /ms-check warn/);
-  assert.match(html, /ms-seal bad/);
-});
-
-test("отказ пред-фильтром — без токенов", () => {
-  const html = renderRefusal({ status: "declined", refusal: { category: "other_region", message: "Не Приморье", by: "prefilter" } });
-  assert.match(html, /Земли сіи мнѣ невѣдомы/);
-  assert.match(html, /0 токенов/);
+test("вопросы: варианты ответа и пропуск", () => {
+  const html = renderQuestions({ questions: [{ text: "Какая кухня?", options: ["Морепродукты", "Корейская"] }] });
+  assert.match(html, /Пара уточнений/);
+  assert.match(html, /data-value="Морепродукты"/);
+  assert.match(html, /id="q-skip"/);
 });
 
 test("строки летописи трудов", () => {

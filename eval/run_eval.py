@@ -32,7 +32,7 @@ async def run_version(version: str, cases: list[dict], concurrency: int, demo: b
             if demo:
                 from app.demo_llm import DemoLLM
                 llm = DemoLLM()
-            result = await run_agent(case["query"], version, llm=llm)
+            result = await run_agent(case["query"], version, llm=llm, allow_questions=False)
             rows[i] = score_run(case, result)
             r = rows[i]
             print(f"  [{version}] {case['id']} {r['status']:<8} q={r['quality']:.2f} tools={'✓' if r['tool_ok'] else '✗'} "

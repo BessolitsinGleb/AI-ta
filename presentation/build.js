@@ -166,11 +166,11 @@ function imgSize(file) {
     const s = slide("LIGHT", "Решение");
     s.addText("Как это выглядит", { placeholder: "title" });
     await addImg(s, path.join(IMG, "plan.png"), 0.5, 1.1, 5.9, 3.9);
-    await addImg(s, path.join(IMG, "manuscript.png"), 6.7, 1.1, 2.8, 1.85);
-    s.addText("Режим «Грамота»", { x: 6.7, y: 3.05, w: 2.8, h: 0.35, fontSize: 14, bold: true, color: C.accent1, margin: 0, isTextBox: true });
-    s.addText("Тот же план в виде старорусской рукописи: буквица, ѣ и ъ, цифирь с титлом, печать «Свѣрено». Переключается одной кнопкой", { x: 6.7, y: 3.4, w: 2.8, h: 1.1, fontSize: 11, color: C.text1, margin: 0, valign: "top", isTextBox: true });
-    s.addText("Слева — обычный вид: интенты из запроса, статус сверки, дни таймлайном, карта и шаги агента вживую", { x: 6.7, y: 4.5, w: 2.8, h: 0.6, fontSize: 10, italic: true, color: C.accent6, margin: 0, valign: "top", isTextBox: true });
-    s.addNotes("Демо: запрос «на 3 дня на машине в Хасанский район». Сверху то, что агент понял из запроса, статус сверки, дни таймлайном, справа карта и живые шаги агента. Одной кнопкой тот же план превращается в старорусскую грамоту.");
+    await addImg(s, path.join(IMG, "logbook.png"), 6.7, 1.1, 2.8, 1.85);
+    s.addText("Вид «Бортовой журнал»", { x: 6.7, y: 3.05, w: 2.8, h: 0.35, fontSize: 14, bold: true, color: C.accent1, margin: 0, isTextBox: true });
+    s.addText("Тот же план в морском стиле: компас, координаты точек, отметка «Маршрут проверен». Переключается одной кнопкой", { x: 6.7, y: 3.4, w: 2.8, h: 1.1, fontSize: 11, color: C.text1, margin: 0, valign: "top", isTextBox: true });
+    s.addText("У каждого пункта ссылки: карта, сайт кафе, расписание и билеты, гостиницы рядом", { x: 6.7, y: 4.5, w: 2.8, h: 0.6, fontSize: 10, italic: true, color: C.accent6, margin: 0, valign: "top", isTextBox: true });
+    s.addNotes("Демо: запрос «на 3 дня на машине в Хасанский район». Сверху то, что агент понял из запроса, статус сверки, дни таймлайном, справа карта и живые шаги агента. У каждого пункта ссылки, чтобы сразу всё оформить. Одной кнопкой план переключается в морской «Бортовой журнал».");
   }
 
   // 5. Архитектура
@@ -188,7 +188,7 @@ function imgSize(file) {
     box(3.3, 2.6, 2.6, 0.95, "Агентный цикл", "LLM ⇄ тулы, параллельные вызовы, до 12 шагов", C.accent1, C.background1);
     box(3.3, 3.65, 2.6, 0.95, "Валидатор", "сверка плана с запросом и миром → исправление", C.accent5, C.background1);
     box(6.5, 1.25, 3.0, 1.15, "OpenRouter", "LLM с tool calling\nмодель — параметр версии", C.background2, C.text1);
-    box(6.5, 2.6, 3.0, 2.25, "9 тулов", "Реальные API: Open-Meteo, OSRM, Nominatim, Overpass, Википедия\nОфлайн: места и часы работы, жильё, расписания, события", C.background2, C.text1);
+    box(6.5, 2.6, 3.0, 2.25, "10 тулов", "Реальные API: Open-Meteo, OSRM, Nominatim (места и кафе), Overpass, Википедия\nОфлайн: часы работы, жильё, расписания, события", C.background2, C.text1);
     const arrow = (x1, y1, x2, y2) => s.addShape(pres.shapes.LINE, { x: x1, y: y1, w: x2 - x1, h: y2 - y1, line: { color: H.accent6, width: 1.5, endArrowType: "triangle", beginArrowType: "triangle" } });
     arrow(2.7, 2.05, 3.1, 2.05);
     arrow(5.9, 1.85, 6.5, 1.85);
@@ -230,7 +230,7 @@ function imgSize(file) {
     s.addText("Тулы и источники данных", { placeholder: "title" });
     const rows = [
       ["get_weather", "Open-Meteo", "реальный"], ["build_route", "OSRM (OSM): машина, вело, пешком", "реальный"],
-      ["geocode", "Nominatim (OSM)", "реальный"], ["find_fuel_stations", "OSM Overpass + наличие топлива", "реальный + мок"],
+      ["geocode", "Nominatim (OSM)", "реальный"], ["find_food", "Nominatim (OSM): кафе, кухня, сайт", "реальный"], ["find_fuel_stations", "OSM Overpass + наличие топлива", "реальный + мок"],
       ["place_info", "Википедия REST", "реальный"], ["search_places", "41 место Приморья, часы и выходные", "датасет"],
       ["find_lodging", "по мотивам Островка / Tvil", "мок"], ["public_transport", "по мотивам Яндекс Расписаний", "датасет"],
       ["find_events", "ярмарки, театр, кормление тигров", "датасет"],
@@ -242,7 +242,7 @@ function imgSize(file) {
         { text: r[1], options: { fontSize: 12, color: H.dk1, fill: { color: i % 2 ? "FFFFFF" : "F3F6F7" } } },
         { text: r[2], options: { fontSize: 12, bold: true, color: tag(r[2]), fill: { color: i % 2 ? "FFFFFF" : "F3F6F7" } } },
       ]));
-    s.addTable(data, { x: 0.5, y: 1.15, w: 6.4, colW: [1.9, 3.15, 1.35], rowH: 0.36, fontSize: 12, border: { type: "solid", pt: 0.5, color: "D5E0E3" }, margin: 0.06, valign: "middle" });
+    s.addTable(data, { x: 0.5, y: 1.15, w: 6.4, colW: [1.9, 3.15, 1.35], rowH: 0.33, fontSize: 12, border: { type: "solid", pt: 0.5, color: "D5E0E3" }, margin: 0.06, valign: "middle" });
     card(s, 7.2, 1.15, 2.3, 3.6, C.background2, "fallback");
     s.addText("5", { x: 7.2, y: 1.35, w: 2.3, h: 0.9, fontSize: 54, bold: true, color: C.accent1, align: "center", margin: 0, isTextBox: true });
     s.addText("реальных источников из интернета", { x: 7.35, y: 2.25, w: 2.0, h: 0.6, fontSize: 12, color: C.text1, align: "center", margin: 0, isTextBox: true });

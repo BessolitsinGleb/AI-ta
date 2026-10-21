@@ -35,9 +35,18 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Амба — AI-ассистент путешествий по Приморью", version="1.0.0", lifespan=lifespan)
 
 
+class Answer(BaseModel):
+    question: str = Field("", max_length=200)
+    answer: str = Field("", max_length=200)
+
+
 class PlanRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
     version: str | None = None
+    answers: list[Answer] | None = Field(None, max_length=4)
+
+    def answer_dicts(self) -> list[dict] | None:
+        return [a.model_dump() for a in self.answers] if self.answers is not None else None
 
 
 @app.get("/api/health")
@@ -67,7 +76,7 @@ def _version(v: str | None) -> str:
 @app.post("/api/plan")
 async def plan(req: PlanRequest) -> dict:
     async with _slots:
-        return await run_agent(req.query, _version(req.version))
+        return await run_agent(req.query, _version(req.version), answers=req.answer_dicts())
 
 
 @app.post("/api/plan/stream")
@@ -81,7 +90,7 @@ async def plan_stream(req: PlanRequest) -> StreamingResponse:
     async def worker() -> None:
         async with _slots:
             try:
-                result = await run_agent(req.query, version, on_event=on_event)
+                result = await run_agent(req.query, version, on_event=on_event, answers=req.answer_dicts())
                 await queue.put({"type": "result", "result": result})
             except Exception as exc:  # pragma: no cover — страховка, чтобы стрим не повис
                 await queue.put({"type": "result", "result": {"status": "error", "error": f"{type(exc).__name__}: {exc}"}})

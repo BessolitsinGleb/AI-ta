@@ -12,27 +12,27 @@ _last_call = 0.0
 _rate_lock = asyncio.Lock()
 
 
-async def _nominatim(query: str) -> list[dict]:
+async def _nominatim_raw(query: str, viewbox: tuple[float, float, float, float], limit: int = 10) -> list[dict]:
+    """viewbox = (запад, север, восток, юг)."""
     global _last_call
-    s, w, n, e = PRIMORYE_BBOX
     async with _rate_lock:  # политика Nominatim — не чаще 1 запроса в секунду
         wait = 1.0 - (time.time() - _last_call)
         if wait > 0:
             await asyncio.sleep(wait)
         _last_call = time.time()
+    w, n, e, s = viewbox
     return await cached_json(
         "GET",
         "https://nominatim.openstreetmap.org/search",
-        params={
-            "q": query,
-            "format": "jsonv2",
-            "limit": 3,
-            "viewbox": f"{w},{n},{e},{s}",
-            "bounded": 1,
-            "accept-language": "ru",
-        },
+        params={"q": query, "format": "jsonv2", "limit": limit, "viewbox": f"{w},{n},{e},{s}", "bounded": 1,
+                "extratags": 1, "accept-language": "ru"},
         ttl=86400,
     )
+
+
+async def _nominatim(query: str) -> list[dict]:
+    s, w, n, e = PRIMORYE_BBOX
+    return await _nominatim_raw(query, (w, n, e, s), limit=3)
 
 
 def gazetteer_lookup(query: str) -> tuple[float, float] | None:

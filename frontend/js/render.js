@@ -1,11 +1,8 @@
-// Рендер ответа агента в виде старорусской грамоты. Чистые функции → HTML-строки (тестируются в Node).
-import { colophon, cyrillicNumeral, oldDate, ORDINALS, toOldOrthography } from "./oldstyle.js";
+// Рендер ответа агента: современный план, «Бортовой журнал», вопросы, шаги агента. Чистые функции → HTML.
 
 export function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
-
-const t = (text, old) => esc(old ? toOldOrthography(text) : text);
 
 export const TOOL_LABELS = {
   search_places: "Ищу места",
@@ -17,114 +14,13 @@ export const TOOL_LABELS = {
   find_events: "Ищу события на эти даты",
   geocode: "Ищу точку на карте — Nominatim",
   place_info: "Читаю справку в Википедии",
+  find_food: "Ищу, где поесть",
+  ask_user: "Уточняю детали у вас",
   submit_plan: "Собираю план",
   decline_request: "Отказываю: запрос не по теме",
   precheck: "Фильтр запросов",
   validate_plan: "Проверка плана",
 };
-
-const GLYPH = { place: "❖", transfer: "➳", food: "♨", lodging: "☾", note: "✎" };
-const TRANSPORT = { car: "на машинѣ", bike: "на велосипедѣ", foot: "пѣшкомъ", bus: "на автобусѣ", train: "на поѣздѣ" };
-
-export function weatherLine(w, old = true) {
-  if (!w) return "";
-  const temp = w.tmin != null && w.tmax != null ? `${Math.round(w.tmin)}…${Math.round(w.tmax)}°` : "";
-  const parts = [w.summary, temp, w.precip_mm != null ? `осадки ${w.precip_mm} мм` : "", w.wind_max_ms != null ? `${old ? "вѣтеръ" : "ветер"} ${Math.round(w.wind_max_ms)} м/с` : "",
-    w.sunset ? `${old ? "закатъ" : "закат"} ${w.sunset}` : ""].filter(Boolean);
-  const risk = (w.risks || []).length ? ` <b class="ms-risk">⚠ ${t(w.risks.join(", "), old)}</b>` : "";
-  return `<div class="ms-weather"><span class="ms-weather-label">${old ? "Небесныя знаменія" : "Погода"}:</span> ${t(parts.join(" · "), old)}${risk}</div>`;
-}
-
-export function renderItem(it, old = true) {
-  const glyph = GLYPH[it.type] || "•";
-  const meta = [];
-  if (it.trip_id) meta.push(`<span class="ms-tag">рейсъ ${esc(it.trip_id.split(":")[0])}</span>`);
-  return `<li class="ms-item type-${esc(it.type || "note")}">
-    <span class="ms-time">${esc(it.time || "")}</span>
-    <span class="ms-glyph" aria-hidden="true">${glyph}</span>
-    <div class="ms-body"><b>${t(it.name, old)}</b>${meta.join("")}${it.details ? `<p>${t(it.details, old)}</p>` : ""}</div>
-  </li>`;
-}
-
-export function renderDay(day, index, old = true) {
-  const n = index + 1;
-  const lod = day.lodging && day.lodging.name
-    ? `<div class="ms-lodging"><span aria-hidden="true">☾</span> ${old ? "Ночлегъ" : "Ночёвка"}: <b>${t(day.lodging.name, old)}</b>${day.lodging.price_rub ? ` · ${Number(day.lodging.price_rub).toLocaleString("ru-RU")} ₽` : ""}</div>`
-    : "";
-  return `<section class="ms-day" data-day="${n}">
-    <h3 class="ms-day-title"><span class="ms-glava">Глава</span><span class="ms-glava-num">${old ? cyrillicNumeral(n, { html: true }) : n}</span>${t(day.title || `День ${ORDINALS[index] || n}`, old)}</h3>
-    <div class="ms-date">${old ? oldDate(day.date, { html: true }) : esc(humanDate(day.date))}</div>
-    ${weatherLine(day.weather, old)}
-    <ol class="ms-items">${(day.items || []).map((it) => renderItem(it, old)).join("")}</ol>
-    ${lod}
-  </section>`;
-}
-
-export function renderChecks(checks = [], summary = {}, old = true) {
-  if (!checks.length) return "";
-  const rows = checks.map((c) => `<li class="ms-check ${c.ok ? "ok" : c.severity === "warn" ? "warn" : "bad"}">
-      <span class="ms-check-mark" aria-label="${c.ok ? "сходится" : "противоречие"}">${c.ok ? "✓" : c.severity === "warn" ? "!" : "✗"}</span>${t(c.text, old)}</li>`).join("");
-  const converges = summary.converges ?? checks.every((c) => c.ok || c.severity === "warn");
-  const seal = `<div class="ms-seal ${converges ? "ok" : "bad"}" role="img" aria-label="${converges ? "План сходится" : "Есть противоречия"}">
-      <span>${converges ? "Свѣрено" : "Есть<br>противорѣчія"}</span><small>${summary.passed ?? ""}/${summary.total ?? ""}</small></div>`;
-  return `<section class="ms-checks"><h3>${old ? "Свѣрка съ міромъ" : "Сверка с реальностью"}</h3><div class="ms-checks-grid"><ul>${rows}</ul>${seal}</div></section>`;
-}
-
-export function renderMetrics(m = {}, model = "") {
-  const parts = [];
-  if (m.latency_s != null) parts.push(`${String(m.latency_s).replace(".", ",")} с`);
-  if (m.total_tokens != null) parts.push(`${Number(m.total_tokens).toLocaleString("ru-RU")} токенов`);
-  if (m.cost_usd) parts.push(`$${Number(m.cost_usd).toFixed(4)}`);
-  if (m.llm_calls != null) parts.push(`шагов агента: ${m.llm_calls}`);
-  if (model) parts.push(esc(model));
-  return parts.join(" · ");
-}
-
-export function renderManuscript(result, { old = true, now = new Date() } = {}) {
-  const plan = result.plan || {};
-  const zachin = String(plan.zachin || "Гой еси, добрый путникъ!");
-  const zText = old ? toOldOrthography(zachin) : zachin;
-  const first = [...zText][0] || "Г";
-  const rest = zText.slice(first.length);
-  const transport = TRANSPORT[plan.transport] || "";
-  const cautions = (plan.cautions || []).map((c) => `<li>${t(c, old)}</li>`).join("");
-  const sources = (result.sources || []).map(esc).join(" · ");
-  return `<article class="scroll" aria-label="Грамота с планом поездки">
-    <div class="scroll-rod" aria-hidden="true"></div>
-    <div class="sheet">
-      <div class="ms-ornament" aria-hidden="true"></div>
-      <header class="ms-head">
-        <h2 class="ms-title">${t(plan.title || "Путевая грамота", old)}</h2>
-        ${transport ? `<div class="ms-transport">${esc(old ? transport : (TRANSPORT_RU[plan.transport] || "").toLowerCase())}</div>` : ""}
-        ${plan.summary ? `<p class="ms-summary">${t(plan.summary, old)}</p>` : ""}
-      </header>
-      <p class="ms-zachin"><span class="bukvitsa" aria-hidden="true">${esc(first)}</span><span class="sr-only">${esc(first)}</span>${esc(rest)}</p>
-      ${(plan.days || []).map((d, i) => renderDay(d, i, old)).join('<div class="ms-divider" aria-hidden="true">❦</div>')}
-      ${cautions ? `<section class="ms-cautions"><h3>${old ? "Что вѣдать надобно" : "Что учесть"}</h3><ul>${cautions}</ul></section>` : ""}
-      ${renderChecks(result.checks, result.check_summary, old)}
-      <footer class="ms-colophon">
-        <p>${old ? colophon(now, { html: true }) : `Составлено ${esc(now.toLocaleDateString("ru-RU"))}`}</p>
-        <p class="ms-metrics">${renderMetrics(result.metrics, result.model)}</p>
-        ${sources ? `<p class="ms-sources">Источники: ${sources}</p>` : ""}
-      </footer>
-    </div>
-    <div class="scroll-rod" aria-hidden="true"></div>
-  </article>`;
-}
-
-export function renderRefusal(result, { old = true } = {}) {
-  const r = result.refusal || {};
-  const titles = { off_topic: "Сіе не о странствіяхъ", other_region: "Земли сіи мнѣ невѣдомы", injection: "Устава не преступаю", too_long: "Челобитная длинна" };
-  return `<article class="scroll scroll-small refusal" aria-label="Отказ">
-    <div class="scroll-rod" aria-hidden="true"></div>
-    <div class="sheet">
-      <h2 class="ms-title">${esc(titles[r.category] || "Отказная грамота")}</h2>
-      <p class="ms-zachin">${t(r.message || "", old)}</p>
-      <p class="ms-metrics">${r.by === "prefilter" ? "Отклонено фильтром до вызова модели: 0 токенов" : renderMetrics(result.metrics, result.model)}</p>
-    </div>
-    <div class="scroll-rod" aria-hidden="true"></div>
-  </article>`;
-}
 
 export function renderTraceLine(ev) {
   if (ev.type === "tool") return `<li class="tr-tool"><b>${esc(TOOL_LABELS[ev.name] || ev.name)}</b></li>`;
@@ -175,10 +71,17 @@ function weatherChip(w) {
     `<span>${esc(risks.length ? `${w.summary}: ${risks.join(", ")}` : w.summary || "")}${parts.length ? ", " + esc(parts.join(", ")) : ""}</span></div>`;
 }
 
+export function linksHtml(links = []) {
+  const safe = links.filter((l) => /^https:\/\//.test(String(l.url || "")));
+  if (!safe.length) return "";
+  return `<span class="links">${safe.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a>`).join("")}</span>`;
+}
+
 function stop(it) {
   const kind = KIND_RU[it.type];
   return `<li class="stop type-${esc(it.type || "note")}"><time>${esc(it.time || "")}</time><div>` +
-    `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${it.details ? `<p>${esc(it.details)}</p>` : ""}</div></li>`;
+    `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${it.details ? `<p>${esc(it.details)}</p>` : ""}` +
+    `${linksHtml(it.links)}</div></li>`;
 }
 
 export function renderVerify(checks = [], summary = {}) {
@@ -218,7 +121,7 @@ export function renderPlan(result) {
   if (nights) facts.push(["Ночёвок", String(nights)]);
   const dayHtml = days.map((d, i) => {
     const lod = d.lodging && d.lodging.name
-      ? `<div class="lodging"><span><span class="lodging-k">Ночёвка:</span> ${esc(d.lodging.name)}</span>${d.lodging.price_rub ? `<span>${Number(d.lodging.price_rub).toLocaleString("ru-RU")} ₽ за ночь</span>` : ""}</div>`
+      ? `<div class="lodging"><span><span class="lodging-k">Ночёвка:</span> ${esc(d.lodging.name)}${d.lodging.price_rub ? `, ~${Number(d.lodging.price_rub).toLocaleString("ru-RU")} ₽ за ночь` : ""}</span>${linksHtml(d.lodging.links)}</div>`
       : "";
     return `<li class="day"><span class="day-num" style="background:${DAY_COLORS[i % DAY_COLORS.length]}">${i + 1}</span>
       <div class="day-head"><div><h3>${esc(humanDate(d.date))}</h3>${d.title ? `<p class="day-sub">${esc(d.title)}</p>` : ""}</div>${weatherChip(d.weather)}</div>
@@ -246,4 +149,53 @@ export function renderNotice(result, mascotSvg = "") {
   }
   const text = result.status === "text" ? result.text : result.error || "неизвестная ошибка";
   return `<div class="notice"><div class="notice-art sad">${mascotSvg}</div><div><h2>Не получилось собрать план</h2><p class="error-box">${esc(text)}</p></div></div>`;
+}
+
+// ---------- Вопросы ----------
+
+export function renderQuestions(result, mascotSvg = "") {
+  const qs = result.questions || [];
+  const blocks = qs.map((q, i) => `<fieldset class="q" data-q="${i}"><legend>${esc(q.text)}</legend>
+      <div class="q-opts">${q.options.map((o) => `<button type="button" class="chip q-opt" aria-pressed="false" data-value="${esc(o)}">${esc(o)}</button>`).join("")}</div></fieldset>`).join("");
+  return `<form class="questions" id="questions"><div class="questions-head"><div class="notice-art">${mascotSvg}</div>
+      <div><h2>Пара уточнений</h2><p>Ответьте, чтобы план получился точнее. Можно пропустить.</p></div></div>
+      ${blocks}<div class="q-actions"><button type="submit" class="go">Собрать план</button><button type="button" class="ghost-btn" id="q-skip">Пропустить</button></div></form>`;
+}
+
+// ---------- «Бортовой журнал»: тот же план в морском стиле ----------
+
+function coords(lat, lon) {
+  if (lat == null || lon == null) return "";
+  return `${Number(lat).toFixed(3)}, ${Number(lon).toFixed(3)}`;
+}
+
+const COMPASS = `<svg class="lb-compass" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="2 3"/>
+  <path d="M50 6 L57 50 L50 94 L43 50 Z" fill="currentColor" opacity=".85"/><path d="M6 50 L50 43 L94 50 L50 57 Z" fill="currentColor" opacity=".35"/>
+  <path d="M50 6 L57 50 L50 50 Z" fill="#d7392b"/><text x="50" y="4" font-size="9" text-anchor="middle" fill="currentColor" dy="-1">С</text></svg>`;
+
+export function renderLogbook(result) {
+  const plan = result.plan || {};
+  const days = plan.days || [];
+  const summ = result.check_summary || {};
+  const rows = days.map((d, i) => {
+    const w = d.weather;
+    const wx = w ? `${weatherIcon(w.summary)} ${esc(w.summary || "")}${w.tmin != null ? `, ${Math.round(w.tmin)}…${Math.round(w.tmax)}°` : ""}${w.wind_max_ms != null ? `, ветер ${Math.round(w.wind_max_ms)} м/с` : ""}` : "";
+    const items = (d.items || []).map((it) => `<tr class="lb-${esc(it.type || "note")}"><td class="lb-time">${esc(it.time || "")}</td>
+        <td><b>${esc(it.name)}</b>${it.details ? `<div class="lb-note">${esc(it.details)}</div>` : ""}${linksHtml(it.links)}</td>
+        <td class="lb-coord">${esc(coords(it.lat, it.lon))}</td></tr>`).join("");
+    const lod = d.lodging?.name ? `<tr class="lb-lodging"><td class="lb-time">ночь</td><td><b>${esc(d.lodging.name)}</b>${linksHtml(d.lodging.links)}</td><td class="lb-coord">${esc(coords(d.lodging.lat, d.lodging.lon))}</td></tr>` : "";
+    return `<section class="lb-day"><header><span class="lb-flag" style="background:${DAY_COLORS[i % DAY_COLORS.length]}">${i + 1}</span>
+        <h3>${esc(humanDate(d.date))}</h3>${wx ? `<span class="lb-wx">${wx}</span>` : ""}</header>
+        <table><thead><tr><th>Время</th><th>Пункт</th><th>Координаты</th></tr></thead><tbody>${items}${lod}</tbody></table></section>`;
+  }).join("");
+  const cautions = (plan.cautions || []).map((c) => `<li>${esc(c)}</li>`).join("");
+  return `<article class="logbook" aria-label="Бортовой журнал поездки">
+    <header class="lb-head">${COMPASS}<div><p class="lb-kicker">Бортовой журнал</p><h2>${esc(plan.title || "Поездка по Приморью")}</h2>
+      ${plan.summary ? `<p class="lb-sum">${esc(plan.summary)}</p>` : ""}</div></header>
+    ${rows}
+    ${cautions ? `<section class="lb-cautions"><h3>Перед выходом</h3><ul>${cautions}</ul></section>` : ""}
+    <footer class="lb-foot"><div class="lb-stamp ${summ.converges ? "ok" : "bad"}"><span>${summ.converges ? "Маршрут проверен" : "Есть замечания"}</span><small>${summ.passed ?? ""} из ${summ.total ?? ""}</small></div>
+      ${renderFoot(result).replace('class="plan-foot"', 'class="plan-foot lb-meta"')}</footer>
+  </article>`;
 }

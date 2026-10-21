@@ -1,17 +1,16 @@
-import { esc, renderManuscript, renderNotice, renderPlan, renderRefusal, renderTraceLine } from "./render.js";
+import { esc, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
-const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView() };
+const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "" };
 
 function readView() {
-  try { return localStorage.getItem("amba-view") === "manuscript" ? "manuscript" : "modern"; } catch { return "modern"; }
+  try { return localStorage.getItem("amba-view") === "logbook" ? "logbook" : "modern"; } catch { return "modern"; }
 }
 
 function setView(view) {
   state.view = view;
   try { localStorage.setItem("amba-view", view); } catch { /* приватный режим */ }
   document.querySelectorAll(".seg-btn").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.view === view)));
-  $("#old-wrap").hidden = view !== "manuscript";
   if (state.result) showResult(state.result);
 }
 
@@ -69,7 +68,6 @@ function setupForm() {
     if (mode && !q.toLowerCase().includes(mode.split(" ").pop().slice(0, 5))) q = `${q}, ${mode}`;
     if (q) ask(q);
   });
-  $("#old").addEventListener("change", () => state.result && showResult(state.result));
   document.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
   setView(state.view);
   $("#print").addEventListener("click", () => window.print());
@@ -80,7 +78,7 @@ function mascotHtml(cls) {
 }
 
 function setLoading() {
-  const text = state.view === "manuscript" ? "Амба оформляет грамоту…" : "Амба собирает план…";
+  const text = "Амба собирает план…";
   $("#result").innerHTML = `<div class="loading">${mascotHtml("writing")}<p>${text}</p></div>`;
 }
 
@@ -115,7 +113,8 @@ function drawMap(mp) {
   const legend = [];
   (mp?.days || []).forEach((day) => {
     if (day.geometry?.length > 1) {
-      L.polyline(day.geometry, { color: day.color, weight: 5, opacity: .9, dashArray: mp.mode === "bus" || mp.mode === "train" ? "8 8" : null }).addTo(state.layers);
+      L.polyline(day.geometry, { color: day.color, weight: 5, opacity: .9, dashArray: day.approx ? "3 9" : (mp.mode === "bus" || mp.mode === "train" ? "10 8" : null) })
+        .bindTooltip(day.approx ? "Маршрут примерный: сервис дорог не ответил" : `День ${day.day}`).addTo(state.layers);
       bounds.push(...day.geometry);
     }
     day.markers.forEach((m, i) => {
@@ -132,6 +131,7 @@ function drawMap(mp) {
       .addTo(state.layers);
   });
   if ((mp?.fuel || []).length) legend.push(`<span><i style="background:#2e6b62;height:8px;width:8px;border-radius:50%"></i>АЗС с топливом</span>`);
+  if ((mp?.days || []).some((d) => d.approx)) legend.push("<span>Пунктир — маршрут примерный</span>");
   $("#legend").innerHTML = legend.join("");
   if (bounds.length) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
   setTimeout(() => state.map.invalidateSize(), 50);
@@ -139,15 +139,14 @@ function drawMap(mp) {
 
 function showResult(result) {
   state.result = result;
-  const old = $("#old").checked;
   const out = $("#result");
   $("#print").disabled = result.status !== "plan";
-  const ms = state.view === "manuscript";
   if (result.status === "plan") {
-    out.innerHTML = ms ? renderManuscript(result, { old }) : renderPlan(result);
+    out.innerHTML = state.view === "logbook" ? renderLogbook(result) : renderPlan(result);
     drawMap(result.map);
-  } else if (result.status === "declined" && ms) {
-    out.innerHTML = `<div class="loading">${mascotHtml("sad")}</div>` + renderRefusal(result, { old });
+  } else if (result.status === "question") {
+    out.innerHTML = renderQuestions(result, state.mascot);
+    bindQuestions(result);
     drawMap(null);
   } else {
     out.innerHTML = renderNotice(result, state.mascot);
@@ -155,8 +154,24 @@ function showResult(result) {
   }
 }
 
-async function ask(query) {
+function bindQuestions(result) {
+  const form = $("#questions");
+  form.querySelectorAll(".q").forEach((fs) => fs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".q-opt");
+    if (!btn) return;
+    fs.querySelectorAll(".q-opt").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+  }));
+  const collect = () => result.questions.map((q, i) => ({
+    question: q.text,
+    answer: form.querySelector(`.q[data-q="${i}"] .q-opt[aria-pressed="true"]`)?.dataset.value || "",
+  }));
+  form.addEventListener("submit", (e) => { e.preventDefault(); ask(state.query, collect()); });
+  $("#q-skip").addEventListener("click", () => ask(state.query, []));
+}
+
+async function ask(query, answers) {
   if (state.busy) return;
+  state.query = query;
   state.busy = true;
   $("#submit").disabled = true;
   $("#ask").classList.add("busy");
@@ -172,7 +187,7 @@ async function ask(query) {
     const resp = await fetch("/api/plan/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, version: $("#version").value || undefined }),
+      body: JSON.stringify({ query, version: $("#version").value || undefined, answers }),
     });
     if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
     const reader = resp.body.getReader();

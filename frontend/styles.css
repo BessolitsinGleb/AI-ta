@@ -200,7 +200,24 @@ textarea:focus { outline: none; }
 .loading p { margin: 0; font-size: 18px; font-weight: 500; color: var(--sea-2); }
 .error-box { background: var(--bad-soft); color: var(--bad); border-radius: var(--r-md); padding: 16px; overflow-wrap: anywhere; }
 
-/* Маскот: анимации (общие для обоих видов). */
+/* Ссылки «перейти и оформить». */
+.links { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; }
+.links a { font-size: 14px; font-weight: 600; color: var(--kelp); text-decoration: none; border-bottom: 1px solid rgba(46, 107, 98, .35); }
+.links a::after { content: " ↗"; font-weight: 400; }
+.links a:hover { border-bottom-color: currentColor; }
+.lodging .links { margin-top: 0; }
+
+/* Уточняющие вопросы. */
+.questions { background: var(--surface); border-radius: var(--r-lg); padding: 24px; }
+.questions-head { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 18px; align-items: center; margin-bottom: 10px; }
+.questions-head h2 { margin: 0 0 4px; font: 700 22px/1.2 var(--display); }
+.questions-head p { margin: 0; color: var(--sea-2); }
+.q { border: 0; margin: 14px 0 0; padding: 0; }
+.q legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
+.q-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.q-actions { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+
+/* Маскот: анимации. */
 .amba-quill { transform-origin: 160px 206px; }
 .writing .amba-quill { animation: write .6s ease-in-out infinite alternate; }
 @keyframes write { from { transform: rotate(-6deg) translateX(-2px); } to { transform: rotate(5deg) translateX(3px); } }
@@ -242,6 +259,7 @@ textarea:focus { outline: none; }
   .stop { grid-template-columns: 48px minmax(0, 1fr); }
   .notice { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .notice-art { width: 110px; }
+  .questions-head { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 @media print {

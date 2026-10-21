@@ -43,7 +43,8 @@ async def build_route(args: dict, ctx: ToolContext) -> dict:
     points = [p for p in (args.get("points") or []) if p and "lat" in p and "lon" in p][:12]
     if len(points) < 2:
         return {"error": "нужно минимум 2 точки с lat/lon"}
-    route_id = f"r{stable_hash(mode, *[(round(p['lat'], 4), round(p['lon'], 4)) for p in points]) % 100000}"
+    detail = "full" if args.get("_full_geometry") else "simplified"  # для карты нужна каждая улица, для LLM — нет
+    route_id = f"r{stable_hash(mode, detail, *[(round(p['lat'], 4), round(p['lon'], 4)) for p in points]) % 100000}"
     res: dict
     if ctx.offline:
         res = _fallback(points, mode)
@@ -52,7 +53,7 @@ async def build_route(args: dict, ctx: ToolContext) -> dict:
         try:
             data = await cached_json(
                 "GET", OSRM[mode] + coords,
-                params={"overview": "simplified", "geometries": "geojson", "steps": "false"},
+                params={"overview": detail, "geometries": "geojson", "steps": "false"},
                 ttl=86400, timeout=15,
             )
             if data.get("code") != "Ok":

@@ -8,10 +8,10 @@
   <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700;800&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Ruslan+Display&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700;800&family=PT+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="/static/styles.css">
-  <link rel="stylesheet" href="/static/manuscript.css">
+  <link rel="stylesheet" href="/static/logbook.css">
 </head>
 <body>
   <header class="topbar">
@@ -62,12 +62,11 @@
           <div class="toolbar-actions">
             <div class="seg" role="radiogroup" aria-label="Вид плана">
               <button type="button" class="seg-btn" role="radio" aria-checked="true" data-view="modern">План</button>
-              <button type="button" class="seg-btn" role="radio" aria-checked="false" data-view="manuscript">Грамота</button>
+              <button type="button" class="seg-btn" role="radio" aria-checked="false" data-view="logbook">Бортовой журнал</button>
             </div>
             <button type="button" class="ghost-btn" id="print" disabled>Сохранить в PDF</button>
           </div>
         </div>
-        <label class="switch" id="old-wrap" hidden><input type="checkbox" id="old"> <span>Дореформенная орфография</span></label>
         <div id="result" aria-live="polite"></div>
       </div>
       <aside class="col-side">

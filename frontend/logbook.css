@@ -1,0 +1,47 @@
+/* «Бортовой журнал»: морская карта, латунь, сигнальный красный. Текст — обычный современный. */
+.logbook {
+  --lb-ink: #10324a; --lb-ink-2: #45627a; --lb-paper: #f4f8f8; --lb-grid: rgba(16, 50, 74, .07);
+  --lb-brass: #b98a3c; --lb-red: #d7392b; --lb-sea: #2a6f8f;
+  position: relative; color: var(--lb-ink); border-radius: 18px; padding: clamp(20px, 3.4vw, 38px);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 39px, var(--lb-grid) 39px 40px),
+    repeating-linear-gradient(90deg, transparent 0 39px, var(--lb-grid) 39px 40px),
+    var(--lb-paper);
+  border: 3px solid var(--lb-ink);
+  box-shadow: inset 0 0 0 6px var(--lb-paper), inset 0 0 0 7px rgba(16, 50, 74, .35);
+}
+.lb-head { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: 22px; }
+.lb-compass { width: 76px; height: 76px; color: var(--lb-ink); }
+.lb-kicker { margin: 0 0 4px; font: 500 14px "PT Mono", ui-monospace, monospace; color: var(--lb-sea); }
+.lb-head h2 { margin: 0; font: 800 clamp(24px, 3vw, 34px)/1.1 var(--display); letter-spacing: -.02em; }
+.lb-sum { margin: 8px 0 0; color: var(--lb-ink-2); max-width: 62ch; }
+.lb-day { margin-top: 22px; }
+.lb-day > header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 2px solid var(--lb-ink); }
+.lb-flag { width: 30px; height: 22px; display: grid; place-items: center; color: #fff; font: 700 13px var(--font); clip-path: polygon(0 0, 100% 0, 82% 50%, 100% 100%, 0 100%); padding-right: 6px; }
+.lb-day h3 { margin: 0; font: 700 18px var(--display); }
+.lb-wx { margin-left: auto; font-size: 14px; color: var(--lb-ink-2); }
+.logbook table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.logbook th { text-align: left; font: 500 12px "PT Mono", ui-monospace, monospace; color: var(--lb-ink-2); padding: 8px 8px 4px 0; }
+.logbook td { padding: 9px 8px 9px 0; border-bottom: 1px dashed rgba(16, 50, 74, .25); vertical-align: top; }
+.lb-time { width: 60px; font: 700 15px "PT Mono", ui-monospace, monospace; white-space: nowrap; }
+.lb-coord { width: 130px; white-space: nowrap; font: 13px "PT Mono", ui-monospace, monospace; color: var(--lb-ink-2); }
+.lb-note { color: var(--lb-ink-2); font-size: 14px; margin-top: 2px; }
+.lb-food .lb-time { color: var(--lb-brass); }
+.lb-transfer .lb-time { color: var(--lb-sea); }
+.lb-lodging td { background: rgba(185, 138, 60, .1); }
+.lb-cautions { margin-top: 24px; padding: 14px 18px; border-left: 0; background: rgba(215, 57, 43, .07); border-radius: 10px; }
+.lb-cautions h3 { margin: 0 0 6px; font: 700 16px var(--display); color: var(--lb-red); }
+.lb-cautions ul { margin: 0; padding-left: 20px; }
+.lb-foot { display: flex; gap: 20px; align-items: center; margin-top: 26px; flex-wrap: wrap; }
+.lb-stamp { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; align-content: center; text-align: center;
+  border: 3px double var(--lb-ink); color: var(--lb-ink); transform: rotate(-8deg); font: 700 14px/1.15 var(--display); padding: 10px; }
+.lb-stamp.ok { border-color: #2e6b62; color: #2e6b62; }
+.lb-stamp.bad { border-color: var(--lb-red); color: var(--lb-red); }
+.lb-stamp small { font: 500 12px "PT Mono", ui-monospace, monospace; margin-top: 4px; }
+.lb-meta { margin: 0; flex: 1; }
+@media (max-width: 640px) {
+  .lb-head { grid-template-columns: 52px minmax(0, 1fr); }
+  .lb-compass { width: 52px; height: 52px; }
+  .lb-coord, .logbook th:last-child { display: none; }
+  .lb-wx { margin-left: 0; width: 100%; }
+}

@@ -32,17 +32,24 @@ def test_request_to_plan(page):
     assert page.locator("#map .leaflet-overlay-pane path").count() >= 1  # маршрут на карте
 
 
-def test_manuscript_view_and_orthography(page):
-    page.click(".seg-btn[data-view=manuscript]")
-    page.wait_for_selector(".scroll .ms-title")
-    assert page.locator(".ms-seal").is_visible()
-    assert "ъ" in page.inner_text(".ms-zachin")
-    page.uncheck("#old")
-    assert "Что учесть" in page.inner_text("#result")
-    page.check("#old")
-    assert "Что вѣдать надобно" in page.inner_text("#result")
+def test_logbook_view(page):
+    page.click(".seg-btn[data-view=logbook]")
+    page.wait_for_selector(".logbook h2")
+    assert "Бортовой журнал" in page.inner_text(".logbook")
+    assert page.locator(".logbook .links a").count() >= 1
     page.click(".seg-btn[data-view=modern]")
     page.wait_for_selector("#result .plan")
+
+
+def test_questions_then_plan_with_links(page):
+    page.fill("#q", "В субботу на машине по Владивостоку, хочу вкусно поесть")
+    page.click("#submit")
+    page.wait_for_selector("#questions", timeout=30000)
+    page.click(".q-opt[data-value='Морепродукты']")
+    page.click("#questions button[type=submit]")
+    page.wait_for_selector("#result .plan h2", timeout=30000)
+    hrefs = page.eval_on_selector_all(".stop .links a", "els => els.map(e => e.href)")
+    assert hrefs and all(h.startswith("https://") for h in hrefs)
 
 
 def test_refusal(page):

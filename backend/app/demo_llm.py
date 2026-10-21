@@ -73,6 +73,9 @@ class DemoLLM:
         def reply(calls: list[dict]) -> LLMResponse:
             return LLMResponse({"role": "assistant", "content": "", "tool_calls": calls}, usage, self.model)
 
+        tool_names = {t["function"]["name"] for t in tools}
+        cuisine_m = re.search(r"кухн[^:\n]*:\s*([^\n]+)", query, re.I)
+        cuisine = cuisine_m.group(1).strip() if cuisine_m else ""
         verdict = precheck(query)
         if not verdict.allowed:
             return reply([_call(0, "decline_request", {"category": verdict.category if verdict.category in
@@ -88,6 +91,10 @@ class DemoLLM:
         dates = [start + timedelta(i) for i in range(n_days)]
         mode = it.transport or "car"
         route_mode = mode if mode in ("car", "bike", "foot") else "car"
+
+        if step == 0 and "ask_user" in tool_names and re.search(r"поесть|еда|кухн|ресторан|кафе|вкусн", q):
+            return reply([_call(0, "ask_user", {"questions": [
+                {"text": "Какую кухню предпочитаете?", "options": ["Морепродукты", "Корейская", "Грузинская", "Неважно"]}]})])
 
         if step == 0:
             return reply([
@@ -124,6 +131,10 @@ class DemoLLM:
                 for i, d in enumerate(dates[:-1]):
                     last = (per_day[i] or places or [{"lat": center[0], "lon": center[1]}])[-1]
                     calls.append(_call(10 + i, "find_lodging", {"near_lat": last["lat"], "near_lon": last["lon"], "date": d.isoformat()}))
+            first = next((p for day in per_day for p in day), None)
+            if first:
+                calls.append(_call(6, "find_food", {"near_lat": first["lat"], "near_lon": first["lon"],
+                                                   "cuisine": "" if cuisine.lower() == "неважно" else cuisine}))
             if mode in ("bus", "train") and area != "Владивосток":
                 calls.append(_call(4, "public_transport", {"from": "Владивосток", "to": TRANSPORT_STOP.get(area, area),
                                                            "date": dates[0].isoformat()}))
@@ -142,6 +153,15 @@ class DemoLLM:
             next((t for t in trips if t["trip_id"].endswith(":there") and t["departures"]), None)
         trip_back = next((t for t in trips if trip_there and t["trip_id"] == trip_there["trip_id"].replace(":there", ":back")), None)
         lodgings = results.get("find_lodging") or []
+        food_places = list((results.get("find_food") or [{}])[-1].get("places", []))
+
+        def food_item(time_s: str, near: dict) -> dict:
+            if food_places:
+                f = food_places.pop(0)
+                return {"time": time_s, "type": "food", "name": f["name"], "lat": f["lat"], "lon": f["lon"],
+                        "url": f.get("url") or "", "details": f"Кухня: {f.get('cuisine') or 'смешанная'}."}
+            return {"time": time_s, "type": "food", "name": "Кафе рядом", "lat": near["lat"], "lon": near["lon"],
+                    "details": "Выберите заведение по ссылке на карте."}
         days_out = []
         for i, d in enumerate(dates):
             items, clock = [], 9 * 60.0
@@ -170,8 +190,7 @@ class DemoLLM:
                               "lat": p["lat"], "lon": p["lon"], "details": p["desc"].split(".")[0] + "."})
                 clock += p["visit_h"] * 60 + 40
                 if len(items) == 2:
-                    items.append({"time": _hm(clock), "type": "food", "name": "Обед с морепродуктами",
-                                  "details": "Гребешок, трепанг или уха — по местному обычаю."})
+                    items.append(food_item(_hm(clock), p))
                     clock += 60
             if i == len(dates) - 1 and trip_back and trip_back["departures"]:
                 deps = [x for x in trip_back["departures"] if x[:2].isdigit()]

@@ -18,9 +18,12 @@ from .config import TZ, settings
 from .guardrails import precheck
 from .intents import parse_intents
 from .llm import ChatModel, LLMError, OpenRouterLLM, Usage
-from .prompts import FINISH_TOOLS, LAST_STEPS_NUDGE, REPAIR_NUDGE, TRUNCATED_NUDGE, baseline_prompt, full_prompt
+from .prompts import ASK_TOOL, FINISH_TOOLS, LAST_STEPS_NUDGE, REPAIR_NUDGE, TRUNCATED_NUDGE, baseline_prompt, full_prompt
 from .tools import ALL_TOOLS, ToolContext
 from .tools.routing import build_route
+from .links import rasp, yandex_maps
+from .tools.places import get_place
+from .tools.transport import get_trip
 from .validator import plan_transport, summarize, validate_plan
 
 EventCb = Callable[[dict], Awaitable[None]]
@@ -94,6 +97,9 @@ def describe_tool(name: str, res: dict) -> str:
     if name == "geocode":
         r = res.get("results") or []
         return f"{r[0]['lat']}, {r[0]['lon']} ({res.get('source')})" if r else "не найдено"
+    if name == "find_food":
+        p = res.get("places") or []
+        return f"заведений рядом: {len(p)}" + (f" — {p[0]['name']}" + (f" ({p[0]['cuisine']})" if p[0].get("cuisine") else "") if p else "")
     if name == "place_info":
         return (res.get("extract") or "")[:90] + "…"
     return "готово"
@@ -149,10 +155,13 @@ async def enrich_map(plan: dict, ctx: ToolContext) -> dict:
         if lod.get("lat") and lod.get("lon"):
             markers.append({"name": lod.get("name"), "lat": float(lod["lat"]), "lon": float(lod["lon"]), "type": "lodging"})
         geometry: list = []
+        approx = False
         if len(markers) >= 2:
-            r = await build_route({"mode": routing_mode, "points": markers}, ctx)
+            r = await build_route({"mode": routing_mode, "points": markers, "_full_geometry": True}, ctx)
             geometry = r.get("geometry") or []
-        return {"day": i + 1, "color": DAY_COLORS[i % len(DAY_COLORS)], "markers": markers, "geometry": geometry}
+            approx = r.get("source") != "osrm"
+        return {"day": i + 1, "color": DAY_COLORS[i % len(DAY_COLORS)], "markers": markers, "geometry": geometry,
+                "approx": approx, "mode": routing_mode}
 
     days_out = await asyncio.gather(*(one(i, d) for i, d in enumerate(plan.get("days") or [])))
     fuel = [s for f in ctx.fuel.values() for s in f.get("stations", [])][:40]
@@ -174,12 +183,17 @@ async def run_agent(
     today: date | None = None,
     on_event: EventCb | None = None,
     offline: bool | None = None,
+    answers: list[dict] | None = None,
+    allow_questions: bool = True,
 ) -> dict:
     emit = on_event or _noop
     t0 = time.perf_counter()
     ver = versions().get(version) or versions()["v2"]
     today = today or today_local()
-    intents = parse_intents(query, today)
+    already_asked = answers is not None  # пустой список = «пропустить вопросы»
+    answers = [a for a in (answers or []) if str(a.get("answer") or "").strip()]
+    answers_text = "\n".join(f"- {a.get('question', '')}: {a['answer']}" for a in answers)
+    intents = parse_intents(f"{query}\n{answers_text}", today)
     usage = Usage()
     trace: list[dict] = []
     tools_called: list[str] = []
@@ -195,7 +209,7 @@ async def run_agent(
     await emit({"type": "start", "version": ver.key, "intents": intents.dict()})
 
     if ver.prefilter:
-        verdict = precheck(query, settings.max_query_chars)
+        verdict = precheck(f"{query}\n{answers_text}".strip(), settings.max_query_chars)  # ответы — тоже ввод пользователя
         if not verdict.allowed:
             trace.append({"kind": "guard", "name": "precheck", "summary": f"отклонено пред-фильтром: {verdict.category}"})
             await emit({"type": "guard", "category": verdict.category})
@@ -208,8 +222,10 @@ async def run_agent(
             return finish("error", error=str(exc))
 
     system = full_prompt(today) if ver.prompt == "full" else baseline_prompt(today)
-    messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": query[:2000]}]
-    tool_schemas = [t.schema() for t in ALL_TOOLS.values()] + FINISH_TOOLS
+    user_text = query[:2000] + (f"\n\nУточнения клиента:\n{answers_text}" if answers_text else "")
+    messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": user_text}]
+    can_ask = allow_questions and not already_asked and ver.prompt == "full"  # спрашиваем максимум один раз
+    tool_schemas = [t.schema() for t in ALL_TOOLS.values()] + FINISH_TOOLS + ([ASK_TOOL] if can_ask else [])
     repairs_left = ver.max_repairs
     nudged = False
     truncated = False
@@ -249,6 +265,19 @@ async def run_agent(
             assistant["reasoning_details"] = msg["reasoning_details"]  # нужно Gemini/o-моделям для продолжения цикла
         messages.append(assistant)
 
+        ask = next((c for c in calls if c["function"]["name"] == "ask_user"), None)
+        if ask and can_ask:
+            qs = []
+            for q in (_parse_args(ask["function"].get("arguments")).get("questions") or [])[:2]:
+                opts = [str(o)[:40] for o in (q.get("options") or []) if str(o).strip()][:4]
+                if str(q.get("text") or "").strip() and len(opts) >= 2:
+                    qs.append({"text": str(q["text"])[:120], "options": opts})
+            if qs:
+                tools_called.append("ask_user")
+                trace.append({"kind": "tool", "step": step, "name": "ask_user", "summary": f"вопросов: {len(qs)}"})
+                await emit({"type": "tool", "name": "ask_user", "args": ""})
+                return finish("question", questions=qs)
+        calls = [c for c in calls if c["function"]["name"] != "ask_user"]
         regular = [c for c in calls if c["function"]["name"] not in ("submit_plan", "decline_request")]
         final = [c for c in calls if c["function"]["name"] in ("submit_plan", "decline_request")]
 
@@ -317,7 +346,38 @@ async def run_agent(
     return finish("error", error=f"агент не уложился в {ver.max_steps} шагов")
 
 
+def attach_links(plan: dict) -> None:
+    """Ссылки, по которым человек сам всё оформит. Считаются на сервере — модель их не выдумывает."""
+    for day in plan.get("days") or []:
+        date_s = str(day.get("date") or "")[:10]
+        for it in day.get("items") or []:
+            links = []
+            try:
+                lat, lon = float(it["lat"]), float(it["lon"])
+            except (KeyError, TypeError, ValueError):
+                lat = lon = None
+            if it.get("trip_id"):
+                trip = get_trip(str(it["trip_id"]))
+                if trip:
+                    src, dst = (trip["from"], trip["to"]) if trip["direction"] != "back" else (trip["to"], trip["from"])
+                    links.append({"title": "Расписание и билеты", "url": rasp(src, dst, date_s, trip["type"])})
+            elif it.get("type") in ("place", "food") and it.get("name"):
+                place = get_place(str(it.get("place_id") or ""))
+                if place and lat is None:
+                    lat, lon = place["lat"], place["lon"]
+                url = str(it.get("url") or "")
+                if url.startswith(("http://", "https://")):
+                    links.append({"title": "Сайт", "url": url})
+                links.append({"title": "На карте", "url": yandex_maps(it["name"], lat, lon)})
+            if links:
+                it["links"] = links
+        lod = day.get("lodging") or {}
+        if lod.get("name"):
+            lod["links"] = [{"title": "Гостиницы рядом", "url": yandex_maps("гостиницы", lod.get("lat"), lod.get("lon"), zoom=14)}]
+
+
 async def _finalize(plan: dict, checks: list, ctx: ToolContext, finish, emit: EventCb) -> dict:
+    attach_links(plan)
     mp = await enrich_map(plan, ctx)
     for day in plan.get("days") or []:
         fc = day.pop("_forecast", None)
