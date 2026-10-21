@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { esc, renderChecks, renderManuscript, renderRefusal, renderTraceLine } from "../js/render.js";
+import { esc, humanDate, renderChecks, renderManuscript, renderNotice, renderPlan, renderRefusal, renderTraceLine, weatherIcon } from "../js/render.js";
 
 const result = {
   status: "plan",
@@ -57,9 +57,41 @@ test("отказ пред-фильтром — без токенов", () => {
 });
 
 test("строки летописи трудов", () => {
-  assert.match(renderTraceLine({ type: "tool", name: "get_weather" }), /Вопрошаю небо/);
+  assert.match(renderTraceLine({ type: "tool", name: "get_weather" }), /Смотрю прогноз погоды/);
   assert.match(renderTraceLine({ type: "tool_result", summary: "<b>x</b>" }), /&lt;b&gt;/);
   assert.match(renderTraceLine({ type: "check", summary: { passed: 3, total: 4, converges: false }, failed: ["дождь"] }), /tr-check bad/);
   assert.equal(renderTraceLine({ type: "unknown" }), "");
   assert.equal(esc(`<a href="x">'`), "&lt;a href=&quot;x&quot;&gt;&#39;");
+});
+
+test("современный план: факты, сверка, дни, ночёвка, что учесть, подвал", () => {
+  const html = renderPlan(result);
+  assert.match(html, /Находка и гора Сестра/);
+  assert.match(html, /Суббота, 24 октября/);
+  assert.match(html, /На автобусе/);
+  assert.match(html, /class="verify bad" open/);
+  assert.match(html, /Есть противоречия: 1 из 3/);
+  assert.match(html, /Ночёвка:<\/span> Отель/);
+  assert.match(html, /4\s800 ₽ за ночь/);
+  assert.match(html, /Что учесть/);
+  assert.match(html, /Собран за 12,3 с/);
+  assert.ok(!html.includes("<Сестра>"), "HTML экранируется");
+  assert.ok(!/ъ\b/.test(html.replace(/<[^>]+>/g, "")), "без дореформенной орфографии");
+});
+
+test("сходящийся план свёрнут, отказ и ошибка", () => {
+  const ok = renderPlan({ ...result, checks: [{ id: "a", ok: true, text: "ок" }], check_summary: { passed: 1, total: 1, converges: true } });
+  assert.match(ok, /class="verify ok">/);
+  assert.match(ok, /План сходится: пройдено 1 проверок из 1/);
+  const refusal = renderNotice({ status: "declined", refusal: { category: "other_region", message: "Не Приморье", by: "prefilter" } }, "<svg></svg>");
+  assert.match(refusal, /Это не Приморский край/);
+  assert.match(refusal, /0 токенов/);
+  assert.match(renderNotice({ status: "error", error: "OpenRouter 402" }), /Не получилось собрать план[\s\S]*402/);
+});
+
+test("даты и значки погоды", () => {
+  assert.equal(humanDate("2026-10-24"), "Суббота, 24 октября");
+  assert.equal(weatherIcon("небольшой дождь"), "🌧");
+  assert.equal(weatherIcon("ясно"), "☀");
+  assert.equal(weatherIcon("туман"), "🌫");
 });

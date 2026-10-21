@@ -12,11 +12,11 @@ const OUT = path.join(__dirname, "Amba_Travel_AI.pptx");
 
 const THEME = {
   name: "Amba Primorye",
-  headFontFace: "Bookman Old Style",
+  headFontFace: "Arial",
   bodyFontFace: "Calibri",
   colors: {
-    dk1: "2A1A10", lt1: "FFFFFF", dk2: "0C2630", lt2: "F2E4C4",
-    accent1: "B3261E", accent2: "D4A63A", accent3: "2F7482", accent4: "E8892B", accent5: "2F6B3A", accent6: "5B4431",
+    dk1: "0F2D3A", lt1: "FFFFFF", dk2: "0F2D3A", lt2: "E9EFF1",
+    accent1: "F0641E", accent2: "F5A15F", accent3: "2E6B62", accent4: "2F5D8A", accent5: "2E6B62", accent6: "3D5A66",
     hlink: "1F5F8B", folHlink: "6B3FA0",
   },
 };
@@ -73,9 +73,9 @@ function imgSize(file) {
     margin: [0.5, 0.5, 0.5, 0.5],
     objects: [
       { placeholder: { options: { name: "title", type: "title", x: 0.5, y: 0.3, w: 9.0, h: 0.7, fontFace: THEME.headFontFace, fontSize: 28, bold: true, color: C.text2, valign: "middle", margin: 0 }, text: "" } },
-      { text: { text: "Амба · Т-Банк × Сириус", options: { x: 0.5, y: 5.25, w: 5, h: 0.25, fontSize: 9, color: "7D6650", margin: 0 } } },
+      { text: { text: "Амба · Т-Банк × Сириус", options: { x: 0.5, y: 5.25, w: 5, h: 0.25, fontSize: 9, color: "6B8590", margin: 0 } } },
     ],
-    slideNumber: { x: 9.1, y: 5.22, w: 0.4, h: 0.25, fontSize: 9, color: "7D6650", align: "right" },
+    slideNumber: { x: 9.1, y: 5.22, w: 0.4, h: 0.25, fontSize: 9, color: "6B8590", align: "right" },
   });
 
   const section = (t) => pres.addSection({ title: t });
@@ -154,9 +154,9 @@ function imgSize(file) {
       if (i === 0) return { text: cell, options: { ...head, align: j === 0 ? "left" : "center" } };
       const amba = j === 4;
       return { text: cell, options: { fontSize: j === 0 ? 13 : 16, align: j === 0 ? "left" : "center", valign: "middle", bold: amba,
-        color: amba ? H.accent1 : H.dk1, fill: { color: amba ? "FBEFD9" : (i % 2 ? "FFFFFF" : "F7F1E3") } } };
+        color: amba ? H.accent1 : H.dk1, fill: { color: amba ? "FFF0E7" : (i % 2 ? "FFFFFF" : "F3F6F7") } } };
     }));
-    s.addTable(data, { x: 0.5, y: 1.2, w: 9.0, colW: [3.2, 1.35, 1.6, 1.5, 1.35], rowH: 0.52, border: { type: "solid", pt: 0.5, color: "E2D3B0" }, margin: 0.08 });
+    s.addTable(data, { x: 0.5, y: 1.2, w: 9.0, colW: [3.2, 1.35, 1.6, 1.5, 1.35], rowH: 0.52, border: { type: "solid", pt: 0.5, color: "D5E0E3" }, margin: 0.08 });
     s.addText("≈ — частично. Амба фокусируется на одном регионе, зато знает его ограничения.", { x: 0.5, y: 4.55, w: 9, h: 0.35, fontSize: 12, italic: true, color: C.accent6, margin: 0, isTextBox: true });
     s.addNotes("Чат-боты хорошо понимают запрос, но не сверяют план с миром. Агрегаторы продают билеты, но не строят поездку. Путеводители надёжны, но статичны. Мы соединяем свободный запрос с проверкой по реальным данным.");
   }
@@ -165,19 +165,12 @@ function imgSize(file) {
   {
     const s = slide("LIGHT", "Решение");
     s.addText("Как это выглядит", { placeholder: "title" });
-    await addImg(s, path.join(IMG, "plan.png"), 0.5, 1.1, 6.2, 4.0);
-    const notes = [
-      ["Интенты", "сроки, ночёвка, транспорт — чипами над грамотой"],
-      ["Грамота", "буквица, киноварь, ѣ и ъ, цифирь с титлом"],
-      ["Чертёж пути", "маршрут по дням на OSM, АЗС"],
-      ["Лѣтопись трудовъ", "шаги агента вживую по SSE"],
-    ];
-    notes.forEach(([h, t], i) => {
-      const y = 1.15 + i * 0.98;
-      s.addText(h, { x: 7.0, y, w: 2.5, h: 0.35, fontSize: 15, bold: true, color: C.accent1, margin: 0, isTextBox: true });
-      s.addText(t, { x: 7.0, y: y + 0.35, w: 2.5, h: 0.55, fontSize: 12, color: C.text1, margin: 0, valign: "top", isTextBox: true });
-    });
-    s.addNotes("Демо: запрос «на 3 дня на машине в Хасанский район». Сверху интенты, слева грамота с планом по дням, справа карта и живая летопись шагов агента. Переключатель убирает дореформенную орфографию, грамоту можно сохранить в PDF.");
+    await addImg(s, path.join(IMG, "plan.png"), 0.5, 1.1, 5.9, 3.9);
+    await addImg(s, path.join(IMG, "manuscript.png"), 6.7, 1.1, 2.8, 1.85);
+    s.addText("Режим «Грамота»", { x: 6.7, y: 3.05, w: 2.8, h: 0.35, fontSize: 14, bold: true, color: C.accent1, margin: 0, isTextBox: true });
+    s.addText("Тот же план в виде старорусской рукописи: буквица, ѣ и ъ, цифирь с титлом, печать «Свѣрено». Переключается одной кнопкой", { x: 6.7, y: 3.4, w: 2.8, h: 1.1, fontSize: 11, color: C.text1, margin: 0, valign: "top", isTextBox: true });
+    s.addText("Слева — обычный вид: интенты из запроса, статус сверки, дни таймлайном, карта и шаги агента вживую", { x: 6.7, y: 4.5, w: 2.8, h: 0.6, fontSize: 10, italic: true, color: C.accent6, margin: 0, valign: "top", isTextBox: true });
+    s.addNotes("Демо: запрос «на 3 дня на машине в Хасанский район». Сверху то, что агент понял из запроса, статус сверки, дни таймлайном, справа карта и живые шаги агента. Одной кнопкой тот же план превращается в старорусскую грамоту.");
   }
 
   // 5. Архитектура
@@ -218,14 +211,14 @@ function imgSize(file) {
     ];
     steps.forEach(([h, t], i) => {
       const x = 0.5 + i * 1.53;
-      card(s, x, 1.3, 1.4, 2.1, i >= 4 ? "FBEFD9" : C.background2, `step-${i + 1}`);
+      card(s, x, 1.3, 1.4, 2.1, i >= 4 ? "FFF0E7" : C.background2, `step-${i + 1}`);
       badge(s, x + 0.49, 1.42, i + 1, i === 5 ? C.accent5 : C.accent1);
       s.addText(h, { x: x + 0.08, y: 1.95, w: 1.24, h: 0.5, fontSize: 12, bold: true, color: C.text1, align: "center", valign: "middle", margin: 0, isTextBox: true });
       s.addText(t, { x: x + 0.08, y: 2.45, w: 1.24, h: 0.9, fontSize: 10, color: C.accent6, align: "center", valign: "top", margin: 0, isTextBox: true });
     });
-    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 2.0, y: 3.65, w: 4.6, h: 0.5, rectRadius: 0.25, fill: { color: "E7F0EF" }, line: { color: H.accent3, width: 1 }, objectName: "loop" });
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 2.0, y: 3.65, w: 4.6, h: 0.5, rectRadius: 0.25, fill: { color: "E3F0EC" }, line: { color: H.accent3, width: 1 }, objectName: "loop" });
     s.addText("↻  шаги 2–4 повторяются, пока данных не хватит", { x: 2.0, y: 3.65, w: 4.6, h: 0.5, fontSize: 12, bold: true, color: C.accent3, align: "center", valign: "middle", margin: 0, isTextBox: true });
-    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.9, y: 3.65, w: 2.55, h: 0.5, rectRadius: 0.25, fill: { color: "FBE9E7" }, line: { color: H.accent1, width: 1 }, objectName: "repair" });
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.9, y: 3.65, w: 2.55, h: 0.5, rectRadius: 0.25, fill: { color: "FDECEA" }, line: { color: H.accent1, width: 1 }, objectName: "repair" });
     s.addText("↺  до 2 попыток исправить", { x: 6.9, y: 3.65, w: 2.55, h: 0.5, fontSize: 12, bold: true, color: C.accent1, align: "center", valign: "middle", margin: 0, isTextBox: true });
     s.addText("Пример: «на машине, на 3 дня в Хасан» → search_places ‖ get_weather → build_route ‖ find_lodging ×2 → find_fuel_stations → submit_plan → сверка 10/10", { x: 0.5, y: 4.4, w: 9, h: 0.6, fontSize: 12, color: C.text1, margin: 0, valign: "top", isTextBox: true });
     s.addNotes("Цикл ровно как в задании: промпт, решение, вызов тула, сбор данных, сборка плана. Плюс шестой шаг — сверка: если валидатор нашёл противоречие, ошибки уходят обратно агенту, и он чинит план.");
@@ -245,11 +238,11 @@ function imgSize(file) {
     const tag = (t) => t.startsWith("реальный") ? H.accent5 : H.accent6;
     const data = [[{ text: "Тул", options: { bold: true, color: H.lt1, fill: { color: H.dk2 } } }, { text: "Источник", options: { bold: true, color: H.lt1, fill: { color: H.dk2 } } }, { text: "Тип", options: { bold: true, color: H.lt1, fill: { color: H.dk2 } } }]]
       .concat(rows.map((r, i) => [
-        { text: r[0], options: { fontFace: "Courier New", fontSize: 11, color: H.dk1, fill: { color: i % 2 ? "FFFFFF" : "F7F1E3" } } },
-        { text: r[1], options: { fontSize: 12, color: H.dk1, fill: { color: i % 2 ? "FFFFFF" : "F7F1E3" } } },
-        { text: r[2], options: { fontSize: 12, bold: true, color: tag(r[2]), fill: { color: i % 2 ? "FFFFFF" : "F7F1E3" } } },
+        { text: r[0], options: { fontFace: "Courier New", fontSize: 11, color: H.dk1, fill: { color: i % 2 ? "FFFFFF" : "F3F6F7" } } },
+        { text: r[1], options: { fontSize: 12, color: H.dk1, fill: { color: i % 2 ? "FFFFFF" : "F3F6F7" } } },
+        { text: r[2], options: { fontSize: 12, bold: true, color: tag(r[2]), fill: { color: i % 2 ? "FFFFFF" : "F3F6F7" } } },
       ]));
-    s.addTable(data, { x: 0.5, y: 1.15, w: 6.4, colW: [1.9, 3.15, 1.35], rowH: 0.36, fontSize: 12, border: { type: "solid", pt: 0.5, color: "E2D3B0" }, margin: 0.06, valign: "middle" });
+    s.addTable(data, { x: 0.5, y: 1.15, w: 6.4, colW: [1.9, 3.15, 1.35], rowH: 0.36, fontSize: 12, border: { type: "solid", pt: 0.5, color: "D5E0E3" }, margin: 0.06, valign: "middle" });
     card(s, 7.2, 1.15, 2.3, 3.6, C.background2, "fallback");
     s.addText("5", { x: 7.2, y: 1.35, w: 2.3, h: 0.9, fontSize: 54, bold: true, color: C.accent1, align: "center", margin: 0, isTextBox: true });
     s.addText("реальных источников из интернета", { x: 7.35, y: 2.25, w: 2.0, h: 0.6, fontSize: 12, color: C.text1, align: "center", margin: 0, isTextBox: true });
@@ -294,8 +287,17 @@ function imgSize(file) {
       s.addText(q, { x: 0.65, y, w: 3.3, h: 0.68, fontSize: 12, italic: true, color: C.text1, valign: "middle", margin: 0, isTextBox: true });
       s.addText(a, { x: 3.95, y, w: 1.65, h: 0.68, fontSize: 12, bold: true, color: col, valign: "middle", align: "right", margin: 0, isTextBox: true });
     });
-    s.addText("Три слоя: пред-фильтр без LLM (0 токенов на очевидные случаи) → тул decline_request → проверка, что все точки плана в Приморье", { x: 0.5, y: 4.55, w: 5.2, h: 0.6, fontSize: 11, color: C.accent6, margin: 0, valign: "top", isTextBox: true });
-    await addImg(s, path.join(IMG, "refusal.png"), 6.0, 1.2, 3.5, 3.9);
+    card(s, 6.0, 1.2, 3.5, 3.2, C.background2, "layers");
+    s.addText("Три слоя защиты", { x: 6.2, y: 1.32, w: 3.1, h: 0.4, fontSize: 15, bold: true, color: C.text1, margin: 0, isTextBox: true });
+    [["Фильтр до модели", "другие регионы, оффтоп, «забудь правила» — 0 токенов"],
+     ["Отказ моделью", "неочевидные случаи — тул decline_request"],
+     ["Проверка плана", "все точки маршрута внутри Приморья"]].forEach(([h, t], i) => {
+      const y = 1.85 + i * 0.82;
+      badge(s, 6.2, y, i + 1, [C.accent1, C.accent3, C.accent4][i]);
+      s.addText(h, { x: 6.75, y: y - 0.04, w: 2.6, h: 0.3, fontSize: 13, bold: true, color: C.text1, margin: 0, isTextBox: true });
+      s.addText(t, { x: 6.75, y: y + 0.26, w: 2.6, h: 0.5, fontSize: 11, color: C.accent6, margin: 0, valign: "top", isTextBox: true });
+    });
+    s.addImage({ data: mascot, x: 8.75, y: 4.45, w: 0.65, h: 0.7, objectName: "mascot-guard" });
     s.addNotes("Все четыре примера со слайда задания прогоняются в эвале. Пред-фильтр ловит очевидное без вызова модели и экономит токены; неочевидные случаи модель отклоняет сама через тул decline_request. Старт из Хабаровска во Владивосток — разрешён.");
   }
 
@@ -333,7 +335,7 @@ function imgSize(file) {
     const best = evals.length ? Math.max(...evals.map((e) => e.aggregate.quality)) : 0;
     evals.forEach((e, i) => {
       const a = e.aggregate;
-      const fill = i % 2 ? "FFFFFF" : "F7F1E3";
+      const fill = i % 2 ? "FFFFFF" : "F3F6F7";
       const o = (extra = {}) => ({ fontSize: 11, align: "center", valign: "middle", color: H.dk1, fill: { color: fill }, ...extra });
       rows.push([
         { text: `${e.version} · ${e.label}`, options: o({ align: "left", bold: true }) },
@@ -346,13 +348,13 @@ function imgSize(file) {
         { text: String(a.latency_avg_s).replace(".", ","), options: o() },
       ]);
     });
-    s.addTable(rows, { x: 0.5, y: 1.1, w: 9.0, colW: [2.2, 1.55, 0.85, 0.95, 0.9, 0.85, 0.85, 0.85], rowH: 0.42, border: { type: "solid", pt: 0.5, color: "E2D3B0" }, margin: 0.05 });
+    s.addTable(rows, { x: 0.5, y: 1.1, w: 9.0, colW: [2.2, 1.55, 0.85, 0.95, 0.9, 0.85, 0.85, 0.85], rowH: 0.42, border: { type: "solid", pt: 0.5, color: "D5E0E3" }, margin: 0.05 });
     const labels = evals.map((e) => e.version);
     s.addChart(pres.charts.BAR, [{ name: "Токены на запрос", labels, values: evals.map((e) => e.aggregate.tokens_avg) }], {
       x: 0.5, y: 2.85, w: 4.4, h: 2.3, barDir: "col", showTitle: true, title: "Токены на запрос", titleFontSize: 12, titleColor: H.dk1,
       titleFontFace: "+mn-lt", chartColors: [H.accent3], showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 10, dataLabelColor: H.dk1,
       dataLabelFontFace: "+mn-lt", dataLabelFormatCode: "# ##0", catAxisLabelColor: H.accent6, valAxisLabelColor: H.accent6, catAxisLabelFontFace: "+mn-lt",
-      valAxisLabelFontFace: "+mn-lt", catAxisLabelFontSize: 10, valAxisLabelFontSize: 9, valGridLine: { color: "E2D3B0", size: 0.5 }, catGridLine: { style: "none" },
+      valAxisLabelFontFace: "+mn-lt", catAxisLabelFontSize: 10, valAxisLabelFontSize: 9, valGridLine: { color: "D5E0E3", size: 0.5 }, catGridLine: { style: "none" },
       showLegend: false, valAxisHidden: true,
     });
     s.addChart(pres.charts.BAR, [{ name: "Качество", labels, values: evals.map((e) => e.aggregate.quality) }], {
@@ -360,7 +362,7 @@ function imgSize(file) {
       titleFontFace: "+mn-lt", chartColors: [H.accent1], showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 10, dataLabelColor: H.dk1,
       dataLabelFontFace: "+mn-lt", dataLabelFormatCode: "0.00", catAxisLabelColor: H.accent6, valAxisLabelColor: H.accent6, catAxisLabelFontFace: "+mn-lt",
       valAxisLabelFontFace: "+mn-lt", catAxisLabelFontSize: 10, valAxisLabelFontSize: 9, valAxisMinVal: 0, valAxisMaxVal: 1,
-      valGridLine: { color: "E2D3B0", size: 0.5 }, catGridLine: { style: "none" }, showLegend: false, valAxisHidden: true,
+      valGridLine: { color: "D5E0E3", size: 0.5 }, catGridLine: { style: "none" }, showLegend: false, valAxisHidden: true,
     });
     if (isDemo) {
       s.addText("Демо-прогон без LLM: проверка обвязки эвала. Итоговые цифры — после прогона с моделями OpenRouter", { x: 0.5, y: 2.6, w: 9, h: 0.25, fontSize: 10, italic: true, color: C.accent1, margin: 0, isTextBox: true });
@@ -400,18 +402,23 @@ function imgSize(file) {
   {
     const s = slide("LIGHT", "Команда");
     s.addText("Команда", { placeholder: "title" });
-    team.slice(0, 4).forEach((m, i) => {
-      const x = 0.5 + i * 2.28;
-      card(s, x, 1.25, 2.1, 3.2, C.background2, `member-${i + 1}`);
-      s.addShape(pres.shapes.OVAL, { x: x + 0.65, y: 1.45, w: 0.8, h: 0.8, fill: { color: [H.accent1, H.accent3, H.accent4, H.accent5][i] }, line: { color: H.lt1, width: 2 }, objectName: `avatar-${i + 1}` });
-      s.addText(m.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), { x: x + 0.65, y: 1.45, w: 0.8, h: 0.8, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle", margin: 0, isTextBox: true });
-      s.addText(m.name, { x: x + 0.1, y: 2.4, w: 1.9, h: 0.4, fontSize: 14, bold: true, color: C.text1, align: "center", margin: 0, isTextBox: true });
-      s.addText(m.role, { x: x + 0.1, y: 2.8, w: 1.9, h: 0.35, fontSize: 12, bold: true, color: C.accent1, align: "center", margin: 0, isTextBox: true });
-      s.addText(m.work, { x: x + 0.15, y: 3.2, w: 1.8, h: 1.15, fontSize: 11, color: C.accent6, align: "center", valign: "top", margin: 0, isTextBox: true });
+    const colors = [H.accent1, H.accent3, H.accent4, "8A5A00", "6B3FA0", H.dk2, "9C2F6B"];
+    const initials = (n) => n.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+    team.slice(0, 8).forEach((m, i) => {
+      const row = i < 4 ? 0 : 1;
+      const inRow = row === 0 ? Math.min(team.length, 4) : team.length - 4;
+      const w = 2.1, gap = 0.2;
+      const x0 = 0.5 + (9 - (inRow * w + (inRow - 1) * gap)) / 2;
+      const x = x0 + (row === 0 ? i : i - 4) * (w + gap);
+      const y = 1.15 + row * 2.0;
+      card(s, x, y, w, 1.8, C.background2, `member-${i + 1}`);
+      s.addShape(pres.shapes.OVAL, { x: x + 0.15, y: y + 0.18, w: 0.55, h: 0.55, fill: { color: colors[i % colors.length] }, line: { color: H.lt1, width: 1.5 }, objectName: `avatar-${i + 1}` });
+      s.addText(initials(m.name), { x: x + 0.15, y: y + 0.18, w: 0.55, h: 0.55, fontSize: 13, bold: true, color: C.background1, align: "center", valign: "middle", margin: 0, isTextBox: true });
+      s.addText(m.name, { x: x + 0.8, y: y + 0.12, w: w - 0.9, h: 0.7, fontSize: 13, bold: true, color: C.text1, valign: "middle", margin: 0, isTextBox: true });
+      s.addText(m.role, { x: x + 0.15, y: y + 0.85, w: w - 0.3, h: 0.3, fontSize: 11, bold: true, color: C.accent1, margin: 0, isTextBox: true });
+      s.addText(m.work, { x: x + 0.15, y: y + 1.15, w: w - 0.3, h: 0.6, fontSize: 10, color: C.accent6, valign: "top", margin: 0, isTextBox: true });
     });
-    s.addImage({ data: mascot, x: 8.7, y: 4.45, w: 0.7, h: 0.76, objectName: "mascot-small" });
-    s.addText("и Амба — талисман и голос грамот", { x: 5.2, y: 4.65, w: 3.4, h: 0.35, fontSize: 11, italic: true, color: C.accent6, align: "right", margin: 0, isTextBox: true });
-    s.addNotes("Кто чем занимался: агент и тулы, данные и сверка, фронт и маскот, эвал и деплой.");
+    s.addNotes("Команда из семи участников: двое бэкендеров, двое ML-инженеров, которые вели и фронт, QA, тимлид и инженер по отладке.");
   }
 
   // 14. Как повторить

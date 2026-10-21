@@ -27,6 +27,7 @@ class Settings:
     model_v1: str = field(default_factory=lambda: os.getenv("MODEL_V1", "openai/gpt-4.1-mini"))
     model_v2: str = field(default_factory=lambda: os.getenv("MODEL_V2", "openai/gpt-4.1-mini"))
     model_v3: str = field(default_factory=lambda: os.getenv("MODEL_V3", "google/gemini-3.1-flash-lite"))
+    llm_max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_MAX_TOKENS", "4096")))
     llm_timeout_s: float = field(default_factory=lambda: float(os.getenv("LLM_TIMEOUT_S", "90")))
     http_timeout_s: float = field(default_factory=lambda: float(os.getenv("HTTP_TIMEOUT_S", "12")))
     user_agent: str = field(

@@ -1,7 +1,19 @@
-import { esc, renderManuscript, renderRefusal, renderTraceLine } from "./render.js";
+import { esc, renderManuscript, renderNotice, renderPlan, renderRefusal, renderTraceLine } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
-const state = { result: null, map: null, layers: null, mascot: "", busy: false };
+const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView() };
+
+function readView() {
+  try { return localStorage.getItem("amba-view") === "manuscript" ? "manuscript" : "modern"; } catch { return "modern"; }
+}
+
+function setView(view) {
+  state.view = view;
+  try { localStorage.setItem("amba-view", view); } catch { /* приватный режим */ }
+  document.querySelectorAll(".seg-btn").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.view === view)));
+  $("#old-wrap").hidden = view !== "manuscript";
+  if (state.result) showResult(state.result);
+}
 
 async function loadMascot() {
   try {
@@ -24,8 +36,8 @@ async function loadMeta() {
     if (vers.demo) {
       const badge = $("#mode-badge");
       badge.hidden = false;
-      badge.textContent = "демо-режим: без ключа OpenRouter";
-      badge.title = "Добавьте OPENROUTER_API_KEY в .env, чтобы планы строила LLM";
+      badge.textContent = "Демо-режим без LLM";
+      badge.title = "Добавьте OPENROUTER_API_KEY в .env, чтобы планы строила модель";
     }
     $("#examples").innerHTML = examples.map((q) => `<button type="button" class="example">${esc(q)}</button>`).join("");
   } catch (e) {
@@ -58,6 +70,8 @@ function setupForm() {
     if (q) ask(q);
   });
   $("#old").addEventListener("change", () => state.result && showResult(state.result));
+  document.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  setView(state.view);
   $("#print").addEventListener("click", () => window.print());
 }
 
@@ -66,14 +80,14 @@ function mascotHtml(cls) {
 }
 
 function setLoading() {
-  $("#result").innerHTML = `<div class="loading">${mascotHtml("writing")}<p>Амба пишетъ грамоту<span class="dots"></span></p></div>`;
+  const text = state.view === "manuscript" ? "Амба пишетъ грамоту…" : "Амба собирает план…";
+  $("#result").innerHTML = `<div class="loading">${mascotHtml("writing")}<p>${text}</p></div>`;
 }
 
 function showIntents(intents) {
   const box = $("#intents");
   const chips = intents?.chips || [];
-  box.hidden = !chips.length;
-  box.innerHTML = `<span class="intents-label">Интенты:</span>` + chips.map((c) => `<span class="intent">${esc(c)}</span>`).join("");
+  box.innerHTML = chips.map((c) => `<span class="intent" title="Понял из запроса">${esc(c)}</span>`).join("");
 }
 
 function addTrace(ev) {
@@ -101,7 +115,7 @@ function drawMap(mp) {
   const legend = [];
   (mp?.days || []).forEach((day) => {
     if (day.geometry?.length > 1) {
-      L.polyline(day.geometry, { color: day.color, weight: 5, opacity: .85, dashArray: mp.mode === "bus" || mp.mode === "train" ? "8 8" : null }).addTo(state.layers);
+      L.polyline(day.geometry, { color: day.color, weight: 5, opacity: .9, dashArray: mp.mode === "bus" || mp.mode === "train" ? "8 8" : null }).addTo(state.layers);
       bounds.push(...day.geometry);
     }
     day.markers.forEach((m, i) => {
@@ -113,11 +127,11 @@ function drawMap(mp) {
   });
   (mp?.fuel || []).forEach((s) => {
     const has = Object.values(s.fuel || {}).some(Boolean);
-    L.circleMarker([s.lat, s.lon], { radius: 5, color: has ? "#2f6b3a" : "#b3261e", fillOpacity: .9, weight: 2 })
+    L.circleMarker([s.lat, s.lon], { radius: 5, color: has ? "#2e6b62" : "#c2321f", fillOpacity: .9, weight: 2 })
       .bindPopup(`<b>${esc(s.name)}</b><br>${Object.entries(s.fuel || {}).map(([k, v]) => `${esc(k)}: ${v ? "есть" : "нет"}`).join(", ")}`)
       .addTo(state.layers);
   });
-  if ((mp?.fuel || []).length) legend.push(`<span><i style="background:#2f6b3a;height:8px;width:8px;border-radius:50%"></i>АЗС с топливом</span>`);
+  if ((mp?.fuel || []).length) legend.push(`<span><i style="background:#2e6b62;height:8px;width:8px;border-radius:50%"></i>АЗС с топливом</span>`);
   $("#legend").innerHTML = legend.join("");
   if (bounds.length) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
   setTimeout(() => state.map.invalidateSize(), 50);
@@ -128,17 +142,16 @@ function showResult(result) {
   const old = $("#old").checked;
   const out = $("#result");
   $("#print").disabled = result.status !== "plan";
+  const ms = state.view === "manuscript";
   if (result.status === "plan") {
-    out.innerHTML = renderManuscript(result, { old });
+    out.innerHTML = ms ? renderManuscript(result, { old }) : renderPlan(result);
     drawMap(result.map);
-  } else if (result.status === "declined") {
+  } else if (result.status === "declined" && ms) {
     out.innerHTML = `<div class="loading">${mascotHtml("sad")}</div>` + renderRefusal(result, { old });
     drawMap(null);
-  } else if (result.status === "text") {
-    out.innerHTML = `<div class="error-box">${esc(result.text)}</div>`;
   } else {
-    out.innerHTML = `<div class="loading">${mascotHtml("sad")}<p>Чернила пролились…</p></div>
-      <div class="error-box"><b>Ошибка:</b> ${esc(result.error || "неизвестная ошибка")}</div>`;
+    out.innerHTML = renderNotice(result, state.mascot);
+    drawMap(null);
   }
 }
 
@@ -146,6 +159,8 @@ async function ask(query) {
   if (state.busy) return;
   state.busy = true;
   $("#submit").disabled = true;
+  $("#ask").classList.add("busy");
+  $("#trace-panel").open = true;
   $("#workspace").hidden = false;
   $("#trace").innerHTML = "";
   showIntents(null);
@@ -186,6 +201,7 @@ async function ask(query) {
   } finally {
     state.busy = false;
     $("#submit").disabled = false;
+    $("#ask").classList.remove("busy");
   }
 }
 

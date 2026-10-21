@@ -24,7 +24,7 @@ from .tools.routing import build_route
 from .validator import plan_transport, summarize, validate_plan
 
 EventCb = Callable[[dict], Awaitable[None]]
-DAY_COLORS = ["#b3261e", "#1f5f8b", "#3f7d3a", "#8a5a00", "#6b3fa0", "#00796b", "#9c2f6b"]
+DAY_COLORS = ["#f0641e", "#2e6b62", "#2f5d8a", "#8a5a00", "#6b3fa0", "#00796b", "#9c2f6b"]
 
 
 @dataclass(frozen=True)

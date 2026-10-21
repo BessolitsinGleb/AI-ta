@@ -70,6 +70,7 @@ class OpenRouterLLM:
             "tools": tools,
             "tool_choice": "auto",
             "temperature": self.temperature,
+            "max_tokens": settings.llm_max_tokens,  # без лимита OpenRouter резервирует кредиты под 64k токенов ответа
             "usage": {"include": True},
         }
         headers = {
