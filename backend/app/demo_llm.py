@@ -9,12 +9,15 @@ import json
 import re
 from datetime import date, timedelta
 
+from .geo import haversine_km
 from .guardrails import precheck
 from .intents import parse_intents
 from .llm import LLMResponse
 from .tools.base import load_data
 from .tools.geocode import gazetteer_lookup
 from .tools.places import get_place, is_open
+from .tools.routing import ROAD_FACTOR
+from .validator import FOOD_NEAR_KM
 
 AREA_ALIASES = [
     ("остров русский", "остров Русский"), ("русск", "остров Русский"), ("находк", "Находка"), ("уссурийск", "Уссурийск"),
@@ -135,10 +138,10 @@ class DemoLLM:
                 for i, d in enumerate(dates[:-1]):
                     last = (per_day[i] or places or [{"lat": center[0], "lon": center[1]}])[-1]
                     calls.append(_call(10 + i, "find_lodging", {"near_lat": last["lat"], "near_lon": last["lon"], "date": d.isoformat()}))
-            first = next((p for day in per_day for p in day), None)
-            if first:
-                calls.append(_call(6, "find_food", {"near_lat": first["lat"], "near_lon": first["lon"],
-                                                   "cuisine": "" if cuisine.lower() == "неважно" else cuisine}))
+            for i, day in enumerate(per_day):  # кафе ищем у мест каждого дня, а не только у первого
+                if day:
+                    calls.append(_call(20 + i, "find_food", {"near_lat": day[0]["lat"], "near_lon": day[0]["lon"],
+                                                            "cuisine": "" if cuisine.lower() == "неважно" else cuisine}))
             if mode in ("bus", "train") and area != "Владивосток":
                 calls.append(_call(4, "public_transport", {"from": "Владивосток", "to": TRANSPORT_STOP.get(area, area),
                                                            "date": dates[0].isoformat()}))
@@ -157,11 +160,13 @@ class DemoLLM:
             next((t for t in trips if t["trip_id"].endswith(":there") and t["departures"]), None)
         trip_back = next((t for t in trips if trip_there and t["trip_id"] == trip_there["trip_id"].replace(":there", ":back")), None)
         lodgings = results.get("find_lodging") or []
-        food_places = list((results.get("find_food") or [{}])[-1].get("places", []))
+        food_places = [f for r in results.get("find_food") or [] for f in r.get("places", [])]
 
         def food_item(time_s: str, near: dict) -> dict:
-            if food_places:
-                f = food_places.pop(0)
+            dist = lambda f: haversine_km(near["lat"], near["lon"], f["lat"], f["lon"]) * ROAD_FACTOR  # noqa: E731
+            f = min(food_places, key=dist, default=None)
+            if f and dist(f) <= FOOD_NEAR_KM.get(mode, 8.0):
+                food_places.remove(f)
                 return {"time": time_s, "type": "food", "name": f["name"], "lat": f["lat"], "lon": f["lon"],
                         "url": f.get("url") or "", "details": f"Кухня: {f.get('cuisine') or 'смешанная'}."}
             return {"time": time_s, "type": "food", "name": "Кафе рядом", "lat": near["lat"], "lon": near["lon"],

@@ -65,6 +65,7 @@ async def test_find_food_real_places_and_cuisine_match():
         {"name": "Tsunami", "lat": "43.11", "lon": "131.88", "extratags": {"cuisine": "seafood", "website": "https://t.ru"}},
         {"name": "Пицца", "lat": "43.12", "lon": "131.89", "extratags": {"cuisine": "pizza"}},
     ]))
+    respx.get("https://t.ru").mock(return_value=httpx.Response(200))  # сайт заведения открывается
     full, visible = await ALL_TOOLS["find_food"].run({"near_lat": 43.115, "near_lon": 131.885, "cuisine": "морепродукты"},
                                                      ToolContext(today=WED, offline=False))
     assert full["places"][0]["name"] == "Tsunami" and full["places"][0]["match"]

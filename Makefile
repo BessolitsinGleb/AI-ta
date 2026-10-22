@@ -1,4 +1,4 @@
-.PHONY: install dev test test-back test-front eval eval-demo deck docker lan publish-site
+.PHONY: install dev test test-back test-front eval eval-demo deck docker lan publish-site fuel-data
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
@@ -32,3 +32,6 @@ lan:
 publish-site:
 	git add docs/site docs/card presentation/Amba_TBank.pptx presentation/Amba_TBank.pdf
 	git commit -m "Ссылка на приложение: $$(grep -o 'http://[0-9.]*:[0-9]*' docs/site/index.html | head -1)" && git push
+
+fuel-data:
+	.venv/bin/python scripts/update_fuel.py

@@ -44,6 +44,8 @@ def _coords(item: dict) -> tuple[float, float] | None:
 
 
 MODE_RU = {"car": "машина", "bike": "велосипед", "foot": "пешком", "bus": "автобус", "train": "поезд"}
+# Еда — рядом с тем, что смотрим: от соседней точки дня не дальше (км по дорогам)
+FOOD_NEAR_KM = {"foot": 1.5, "bike": 4.0, "bus": 2.0, "train": 2.0, "car": 8.0}
 
 
 def plan_transport(plan: dict, intents: Intents) -> str:
@@ -138,6 +140,30 @@ async def validate_plan(plan: dict, intents: Intents, ctx: ToolContext) -> list[
         if limit and mode in ("foot", "bike"):
             checks.append(Check(f"distance_day{i+1}", km <= limit,
                                 f"День {i+1}: ~{km:.0f} км {'пешком' if mode == 'foot' else 'на велосипеде'} (предел {limit:.0f})"))
+
+    # 4б. Кафе рядом с местами дня, а не в соседнем посёлке.
+    near_km = FOOD_NEAR_KM.get(mode, 8.0)
+    far_food, food_seen = [], False
+    for d in days:
+        stops = [it for it in d.get("items") or [] if it.get("type") != "transfer"]
+        lod = d.get("lodging") or {}
+        if lod.get("lat") and lod.get("lon"):
+            stops.append({"name": lod.get("name"), "lat": lod["lat"], "lon": lod["lon"], "type": "lodging"})
+        for j, it in enumerate(stops):
+            if it.get("type") != "food" or not (c := _coords(it)):
+                continue
+            food_seen = True
+            near = [(o, oc) for o in (stops[j - 1] if j else None, stops[j + 1] if j + 1 < len(stops) else None)
+                    if o and (oc := _coords(o))]
+            if not near:
+                continue
+            other, oc = min(near, key=lambda x: haversine_km(*c, *x[1]))
+            km = haversine_km(*c, *oc) * ROAD_FACTOR
+            if km > near_km:
+                far_food.append(f"«{it.get('name')}» в ~{km:.0f} км от «{other.get('name')}»")
+    if food_seen:
+        checks.append(Check("food_nearby", not far_food, "Кафе рядом с местами дня" if not far_food else
+                            f"Еда далеко от маршрута (нужно ближе {near_km:g} км): " + "; ".join(far_food[:3])))
 
     # 5. Погода — сверяем с прогнозом сами.
     horizon = ctx.today + timedelta(FORECAST_DAYS - 1)

@@ -1,24 +1,51 @@
-"""АЗС по маршруту: OSM Overpass (реальные станции) + мок наличия топлива (открытых данных нет)."""
+"""АЗС по маршруту из OpenStreetMap: виды топлива, бренд, часы и услуги — из тегов OSM (у части станций они не заполнены).
+
+Берём снимок всех АЗС края (data/fuel_osm.json, обновляет scripts/update_fuel.py): Overpass отвечает слишком долго.
+"""
 from __future__ import annotations
 
-from ..geo import haversine_km
-from ..http import cached_json
-from .base import Tool, ToolContext, load_data, stable_hash
+import json
+from functools import lru_cache
+from pathlib import Path
 
-import time
+from ..geo import haversine_km
+from .base import Tool, ToolContext, load_data
+
 
 OVERPASS = "https://overpass-api.de/api/interpreter"
-_overpass_down_until = 0.0  # предохранитель: Overpass часто перегружен — не ждём его на каждом запросе
+SNAPSHOT = Path(__file__).resolve().parents[1] / "data" / "fuel_osm.json"
 NEAR_ROUTE_KM = 6.0
 FUELS = ["АИ-92", "АИ-95", "ДТ"]
+OSM_FUEL = {"АИ-92": "fuel:octane_92", "АИ-95": "fuel:octane_95", "ДТ": "fuel:diesel", "АИ-98": "fuel:octane_98", "Газ": "fuel:lpg"}
+SERVICES = {"shop": "магазин", "toilets": "туалет", "car_wash": "мойка", "compressed_air": "подкачка шин",
+            "self_service": "самообслуживание"}
+NOTE = "виды топлива, часы и услуги — из OpenStreetMap; остатки топлива сети в открытом доступе не публикуют"
 
 
-def availability(station_id: str, day: str) -> dict[str, bool]:
-    """Мок наличия топлива: детерминирован от станции и даты; ~15% станций без АИ-95, ~7% закрыты."""
-    h = stable_hash(station_id, day)
-    if h % 14 == 0:
-        return {f: False for f in FUELS}
-    return {"АИ-92": True, "АИ-95": h % 7 != 1, "ДТ": h % 9 != 2}
+def fuel_types(tags: dict) -> dict[str, bool | None]:
+    """АИ-92/95/ДТ: True — продаёт, False — нет, None — в OSM не указано. АИ-98 и газ — только если есть."""
+    out: dict[str, bool | None] = {}
+    for name, key in OSM_FUEL.items():
+        val = tags.get(key)
+        if name in FUELS:
+            out[name] = True if val == "yes" else False if val == "no" else None
+        elif val == "yes":
+            out[name] = True
+    return out
+
+
+def station_info(el: dict) -> dict:
+    t = el.get("tags", {})
+    pos = el if "lat" in el else el.get("center", {})  # АЗС-контур (way) — по центру
+    hours = t.get("opening_hours")
+    services = [ru for key, ru in SERVICES.items() if t.get(key) not in (None, "no")]
+    if any(t.get(k) == "yes" for k in ("payment:cards", "payment:credit_cards", "payment:debit_cards", "payment:visa", "payment:mir")):
+        services.append("оплата картой")
+    street = " ".join(x for x in (t.get("addr:street"), t.get("addr:housenumber")) if x)
+    return {"id": f"osm{el['id']}", "name": t.get("name") or t.get("brand") or "АЗС", "lat": pos["lat"], "lon": pos["lon"],
+            "brand": t.get("brand") or t.get("operator"), "fuel": fuel_types(t),
+            "hours": "круглосуточно" if hours == "24/7" else hours, "services": services,
+            "address": ", ".join(x for x in (street, t.get("addr:city")) if x) or None}
 
 
 def _project(geometry: list[list[float]], lat: float, lon: float) -> tuple[float, float]:
@@ -32,12 +59,9 @@ def _project(geometry: list[list[float]], lat: float, lon: float) -> tuple[float
     return best, along
 
 
-async def _overpass(bbox: tuple[float, float, float, float]) -> list[dict]:
-    s, w, n, e = bbox
-    q = f'[out:json][timeout:8];node["amenity"="fuel"]({s},{w},{n},{e});out 200;'
-    data = await cached_json("POST", OVERPASS, data={"data": q}, ttl=86400, timeout=7)
-    return [{"id": f"osm{el['id']}", "name": (el.get("tags", {}).get("name") or el.get("tags", {}).get("brand") or "АЗС"),
-             "lat": el["lat"], "lon": el["lon"]} for el in data.get("elements", [])]
+@lru_cache(maxsize=1)
+def _snapshot() -> dict:
+    return json.loads(SNAPSHOT.read_text(encoding="utf-8")) if SNAPSHOT.exists() else {}
 
 
 async def find_fuel_stations(args: dict, ctx: ToolContext) -> dict:
@@ -52,41 +76,36 @@ async def find_fuel_stations(args: dict, ctx: ToolContext) -> dict:
     w = min(p[1] for p in geom) - 0.05
     e = max(p[1] for p in geom) + 0.05
 
-    global _overpass_down_until
-    stations, source = [], "offline"
-    if not ctx.offline and time.time() > _overpass_down_until:
-        try:
-            stations = await _overpass((s, w, n, e))
-            source = "overpass"
-            ctx.sources.add("OSM Overpass (АЗС)")
-        except Exception:
-            stations = []
-            _overpass_down_until = time.time() + 600
-    if not stations:
-        stations = load_data("fuel_offline.json")
+    snap = _snapshot()
+    stations, source = [st for st in snap.get("stations", []) if s <= st["lat"] <= n and w <= st["lon"] <= e], "osm"
+    if snap:
+        ctx.sources.add(f"OpenStreetMap: АЗС (снимок {str(snap.get('osm_timestamp') or '')[:10]})")
+    else:  # снимка нет — короткий список из датасета
+        stations, source = load_data("fuel_offline.json"), "offline"
         ctx.sources.add("офлайн-список АЗС")
 
     on_route = []
     for st in stations:
         dist, along = _project(geom, st["lat"], st["lon"])
         if dist <= NEAR_ROUTE_KM:
-            avail = availability(st["id"], day)
-            on_route.append({"id": st["id"], "name": st["name"], "lat": st["lat"], "lon": st["lon"],
-                             "km_from_start": round(along, 1), "off_route_km": round(dist, 1), "fuel": avail})
+            on_route.append({**st, "fuel": st.get("fuel") or {f: None for f in FUELS}, "services": st.get("services") or [],
+                             "km_from_start": round(along, 1), "off_route_km": round(dist, 1)})
     on_route.sort(key=lambda x: x["km_from_start"])
     # Отбрасываем дубли (несколько колонок одной АЗС).
     dedup = []
     for st in on_route:
         if not dedup or abs(st["km_from_start"] - dedup[-1]["km_from_start"]) > 1.0:
             dedup.append(st)
-    with_fuel = [st for st in dedup if st["fuel"].get(fuel)]
+    # «Нет данных» не считаем отказом: перегон считаем по станциям, где топливо не отмечено как отсутствующее
+    with_fuel = [st for st in dedup if st["fuel"].get(fuel) is not False]
+    confirmed = sum(1 for st in dedup if st["fuel"].get(fuel) is True)
     total = route["distance_km"]
     marks = [0.0] + [st["km_from_start"] for st in with_fuel] + [total]
     max_gap = max(b - a for a, b in zip(marks, marks[1:])) if len(marks) > 1 else total
     result = {
         "route_id": route["route_id"], "fuel": fuel, "date": day, "source": source,
-        "stations": dedup, "stations_with_fuel": len(with_fuel), "max_gap_km": round(max_gap, 1),
-        "availability_note": "наличие топлива — мок (открытых данных нет)",
+        "stations": dedup, "stations_with_fuel": len(with_fuel), "confirmed": confirmed, "max_gap_km": round(max_gap, 1),
+        "availability_note": NOTE,
     }
     if max_gap > 200:
         result["warning"] = f"перегон {max_gap:.0f} км без {fuel} — заправьтесь заранее"
@@ -99,12 +118,13 @@ def _compact(res: dict) -> dict:
         return res
     fuel = res["fuel"]
     st = [{"name": s["name"][:40], "km": s["km_from_start"], "has": s["fuel"].get(fuel), "lat": round(s["lat"], 3),
-           "lon": round(s["lon"], 3)} for s in res["stations"]]
+           "lon": round(s["lon"], 3), **({"hours": s["hours"]} if s.get("hours") else {})} for s in res["stations"]]
     # Длинный список сокращаем: оставляем станции с топливом равномерно и все «пустые».
     if len(st) > 10:
-        st = [s for s in st if not s["has"]][:3] + [s for s in st if s["has"]][:: max(1, len(st) // 7)]
+        st = [s for s in st if s["has"] is False][:3] + [s for s in st if s["has"] is not False][:: max(1, len(st) // 7)]
         st.sort(key=lambda s: s["km"])
-    out = {"fuel": fuel, "stations": st, "with_fuel": res["stations_with_fuel"], "max_gap_km": res["max_gap_km"]}
+    out = {"fuel": fuel, "stations": st, "with_fuel": res["stations_with_fuel"], "confirmed": res.get("confirmed", 0),
+           "max_gap_km": res["max_gap_km"], "note": "has=null — в OSM не указано"}
     if res.get("warning"):
         out["warning"] = res["warning"]
     return out
@@ -112,7 +132,8 @@ def _compact(res: dict) -> dict:
 
 TOOL = Tool(
     name="find_fuel_stations",
-    description="АЗС вдоль построенного маршрута (OSM) и наличие топлива на дату (мок). Обязателен для поездок на машине.",
+    description=("АЗС вдоль построенного маршрута (OpenStreetMap): виды топлива, часы, услуги, перегон без топлива. "
+                 "Обязателен для поездок на машине."),
     parameters={
         "type": "object",
         "properties": {

@@ -1,6 +1,6 @@
 import { api, currentUser, freshAuthHeader, logout, onAuth, refresh } from "./api.js";
 import * as pages from "./pages.js";
-import { esc, humanDate, linksHtml, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
+import { esc, fuelBadges, fuelMeta, humanDate, linksHtml, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
 const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "", conversation: null, loginRequired: true };
@@ -259,6 +259,7 @@ function ensureMap() {
     maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(state.map);
   state.layers = L.layerGroup().addTo(state.map);
+  state.map.on("zoomend moveend", updateLabels);
 }
 
 // ---------- карта: дни — отдельные слои, легенда — переключатели, план и карта связаны ----------
@@ -268,7 +269,32 @@ const sameSpot = (m, it) => it && it.name === m.name && Math.abs(Number(it.lat) 
 
 function popupHtml(m, item, dayNum) {
   const meta = [`День ${dayNum}`, m.time, m.type === "lodging" ? "ночёвка" : ""].filter(Boolean).join(" · ");
-  return `<b>${esc(m.name)}</b><br><span class="pop-meta">${esc(meta)}</span>${linksHtml(item?.links)}`;
+  return `<b>${esc(m.name)}</b><br><span class="pop-meta">${esc(meta)}</span>` +
+    `${item?.address ? `<br><span class="pop-addr">${esc(item.address)}</span>` : ""}${linksHtml(item?.links)}`;
+}
+
+// Подпись у метки: коротко, без второй половины «Нацпарк — экотропа» и длинных хвостов
+function shortName(name = "") {
+  const head = String(name).split(/\s+[—–-]\s+/)[0].trim();
+  return head.length > 26 ? `${head.slice(0, 25).trim()}…` : head;
+}
+
+function fuelPopup(s) {
+  const meta = fuelMeta(s);
+  return `<b>${esc(s.name)}</b><br><span class="pop-meta">${Number(s.km_from_start ?? 0).toFixed(0)} км от старта` +
+    `${s.off_route_km ? `, ${s.off_route_km} км от трассы` : ""}</span><div class="fuels">${fuelBadges(s.fuel)}</div>` +
+    `${meta ? `<span class="pop-meta">${esc(meta)}</span>` : ""}${s.address ? `<br><span class="pop-addr">${esc(s.address)}</span>` : ""}`;
+}
+
+// Подписи не налезают друг на друга: по порядку плана показываем те, что помещаются, остальные — по наведению
+function updateLabels() {
+  const shown = [];
+  document.querySelectorAll("#map .pin-label").forEach((el) => {
+    el.classList.remove("label-hidden");
+    const r = el.getBoundingClientRect();
+    const hit = shown.some((o) => r.left < o.right + 2 && r.right > o.left - 2 && r.top < o.bottom + 1 && r.bottom > o.top - 1);
+    if (hit) el.classList.add("label-hidden"); else shown.push(r);
+  });
 }
 
 function drawMap(mp) {
@@ -292,6 +318,8 @@ function drawMap(mp) {
         iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -26] });
       const ref = { lodging, item: lodging ? "lodging" : String(items.indexOf(item)) };
       ref.marker = L.marker([m.lat, m.lon], { icon, title: m.name, riseOnHover: true }).bindPopup(popupHtml(m, item, day.day))
+        .bindTooltip(esc(shortName(m.name)), { permanent: true, direction: "right", offset: [10, -16], className: "pin-label" })
+        .on("mouseover", () => showLabel(ref))
         .on("click", () => flashStop(d, ref)).addTo(group);
       return ref;
     });
@@ -299,13 +327,16 @@ function drawMap(mp) {
     return { group, markers };
   });
   state.fuelLayer = L.layerGroup((mp?.fuel || []).map((s) => {
-    const has = Object.values(s.fuel || {}).some(Boolean);
-    return L.circleMarker([s.lat, s.lon], { radius: 5, color: has ? "#2e6b62" : "#c2321f", fillOpacity: .9, weight: 2 })
-      .bindPopup(`<b>${esc(s.name)}</b><br>${Object.entries(s.fuel || {}).map(([k, v]) => `${esc(k)}: ${v ? "есть" : "нет"}`).join(", ")}`);
+    const vals = Object.values(s.fuel || {});
+    const color = vals.some((v) => v === true) ? "#2e6b62" : vals.length && vals.every((v) => v === false) ? "#c2321f" : "#8a9ca3";
+    return L.circleMarker([s.lat, s.lon], { radius: 6, color, fillColor: color, fillOpacity: .85, weight: 2 })
+      .bindTooltip(esc(s.brand || s.name), { direction: "top", offset: [0, -6] })
+      .bindPopup(fuelPopup(s));
   })).addTo(state.layers);
   state.focusDay = null;
   renderLegend(mp);
   fitMap(false);
+  updateLabels();
   setTimeout(() => state.map.invalidateSize(), 50);
 }
 
@@ -313,7 +344,7 @@ function renderLegend(mp) {
   const days = mp?.days || [];
   const parts = days.length > 1 ? ['<button type="button" class="lg-btn" data-day="all" aria-pressed="true">Все дни</button>'] : [];
   days.forEach((day, i) => parts.push(`<button type="button" class="lg-btn" data-day="${i}" aria-pressed="false" style="--c:${day.color}" title="Показать только этот день"><i></i>День ${day.day}</button>`));
-  if ((mp?.fuel || []).length) parts.push('<button type="button" class="lg-btn" data-fuel aria-pressed="true" title="Показать или скрыть заправки"><i class="dot"></i>АЗС с топливом</button>');
+  if ((mp?.fuel || []).length) parts.push('<button type="button" class="lg-btn" data-fuel aria-pressed="true" title="Зелёные — топливо есть, серые — в OSM не указано, красные — нет"><i class="dot"></i>АЗС</button>');
   if (days.some((d) => d.approx)) parts.push('<span class="lg-note">Пунктир — маршрут примерный</span>');
   $("#legend").innerHTML = parts.join("");
 }
@@ -330,6 +361,7 @@ function focusDay(d) {
   document.querySelectorAll("#legend [data-day]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.day === key)));
   document.querySelectorAll("#result .day").forEach((el, i) => el.classList.toggle("map-focus", i === d));
   fitMap(true);
+  updateLabels();
 }
 
 function fitMap(animate) {
@@ -369,12 +401,14 @@ function flashStop(d, ref) {
   if (WIDE.matches && (r.top < 0 || r.bottom > window.innerHeight)) el.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+const showLabel = (ref) => ref?.marker.getTooltip()?.getElement()?.classList.remove("label-hidden");
+
 let hotRef = null;
 function setHot(ref) {
   if (hotRef === ref) return;
   if (hotRef) { hotRef.marker.getElement()?.classList.remove("pin-hot"); hotRef.marker.setZIndexOffset(0); }
   hotRef = ref || null;
-  if (hotRef) { hotRef.marker.getElement()?.classList.add("pin-hot"); hotRef.marker.setZIndexOffset(1000); }
+  if (hotRef) { hotRef.marker.getElement()?.classList.add("pin-hot"); hotRef.marker.setZIndexOffset(1000); showLabel(hotRef); }
 }
 
 function setupMapLinks() {

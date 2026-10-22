@@ -81,10 +81,40 @@ export function linksHtml(links = []) {
 const onMap = (it) => Number.isFinite(parseFloat(it?.lat)) && Number.isFinite(parseFloat(it?.lon));
 const mapRef = (it, day, item) => (onMap(it) ? ` data-map-day="${day}" data-map-item="${item}" tabindex="0" title="Показать на карте"` : "");
 
+const addrHtml = (a) => (a ? `<span class="addr">${esc(a)}</span>` : "");
+
+// АЗС: топливо из тегов OSM — есть / нет / не указано
+const MAIN_FUELS = ["АИ-92", "АИ-95", "ДТ"];
+export function fuelBadges(fuel = {}) {
+  const names = [...MAIN_FUELS, ...Object.keys(fuel).filter((f) => !MAIN_FUELS.includes(f) && fuel[f] === true)];
+  return names.map((f) => {
+    const v = fuel[f];
+    const [cls, hint] = v === true ? ["yes", "есть"] : v === false ? ["no", "нет"] : ["unk", "в OSM не указано"];
+    return `<span class="fuel ${cls}" title="${f}: ${hint}">${esc(f)}</span>`;
+  }).join("");
+}
+
+export function fuelMeta(s) {
+  return [s.brand && s.brand !== s.name ? s.brand : "", s.hours, ...(s.services || [])].filter(Boolean).join(" · ");
+}
+
+function fuelHtml(stations = []) {
+  if (!stations.length) return "";
+  const known = stations.filter((s) => Object.values(s.fuel || {}).some((v) => v !== null)).length;
+  const rows = stations.map((s) => {
+    const meta = fuelMeta(s);
+    return `<li><span class="fuel-km">${Number(s.km_from_start ?? 0).toFixed(0)} км</span><div><b>${esc(s.name)}</b>${addrHtml(s.address)}` +
+      `<div class="fuels">${fuelBadges(s.fuel)}</div>${meta ? `<small>${esc(meta)}</small>` : ""}</div></li>`;
+  }).join("");
+  return `<details class="fuel-list"><summary>Заправки по пути: ${stations.length}${known ? `, у ${known} известно топливо` : ""}</summary>
+    <p class="hint">Топливо, часы и услуги — из OpenStreetMap. Серым — в OSM не указано; остатки на сегодня сети не публикуют.</p>
+    <ol>${rows}</ol></details>`;
+}
+
 function stop(it, day, i) {
   const kind = KIND_RU[it.type];
   return `<li class="stop type-${esc(it.type || "note")}"${mapRef(it, day, i)}><time>${esc(it.time || "")}</time><div>` +
-    `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${it.details ? `<p>${esc(it.details)}</p>` : ""}` +
+    `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${addrHtml(it.address)}${it.details ? `<p>${esc(it.details)}</p>` : ""}` +
     `${linksHtml(it.links)}</div></li>`;
 }
 
@@ -128,7 +158,7 @@ export function renderPlan(result) {
   if (nights) facts.push(["Ночёвок", String(nights)]);
   const dayHtml = days.map((d, i) => {
     const lod = d.lodging && d.lodging.name
-      ? `<div class="lodging"${mapRef(d.lodging, i, "lodging")}><span><span class="lodging-k">Ночёвка:</span> ${esc(d.lodging.name)}${d.lodging.price_rub ? `, ~${Number(d.lodging.price_rub).toLocaleString("ru-RU")} ₽ за ночь` : ""}</span>${linksHtml(d.lodging.links)}</div>`
+      ? `<div class="lodging"${mapRef(d.lodging, i, "lodging")}><span><span class="lodging-k">Ночёвка:</span> ${esc(d.lodging.name)}${d.lodging.price_rub ? `, ~${Number(d.lodging.price_rub).toLocaleString("ru-RU")} ₽ за ночь` : ""}${addrHtml(d.lodging.address)}</span>${linksHtml(d.lodging.links)}</div>`
       : "";
     return `<li class="day"><span class="day-num" data-focus-day="${i}" role="button" tabindex="0" title="Показать этот день на карте" style="background:${DAY_COLORS[i % DAY_COLORS.length]}">${i + 1}</span>
       <div class="day-head"><div><h3>${esc(humanDate(d.date))}</h3>${d.title ? `<p class="day-sub">${esc(d.title)}</p>` : ""}</div>${weatherChip(d.weather)}</div>
@@ -141,6 +171,7 @@ export function renderPlan(result) {
     ${renderVerify(result.checks, result.check_summary)}
     <ol class="days">${dayHtml}</ol>
     ${cautions ? `<section class="cautions"><h3>Что учесть</h3><ul>${cautions}</ul></section>` : ""}
+    ${fuelHtml(result.map?.fuel)}
     ${renderFoot(result)}
   </article>`;
 }

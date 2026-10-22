@@ -19,7 +19,7 @@ import pytest  # noqa: E402
 from app.http import clear_cache  # noqa: E402
 
 
-from app import mailer, ratelimit  # noqa: E402
+from app import linkcheck, mailer, ratelimit  # noqa: E402
 from app.db import Base, engine  # noqa: E402
 
 
@@ -27,6 +27,7 @@ from app.db import Base, engine  # noqa: E402
 def _fresh_state():
     clear_cache()
     ratelimit.reset()
+    linkcheck._seen.clear()
     mailer.outbox.clear()
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)

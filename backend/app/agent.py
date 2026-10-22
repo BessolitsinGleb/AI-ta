@@ -14,7 +14,9 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Awaitable, Callable
 
+from .address import add_addresses
 from .config import TZ, settings
+from .linkcheck import drop_dead_links
 from .guardrails import precheck
 from .intents import merge_intents, parse_intents
 from .llm import ChatModel, LLMError, OpenRouterLLM, Usage
@@ -400,7 +402,9 @@ def attach_links(plan: dict) -> None:
 
 async def _finalize(plan: dict, checks: list, ctx: ToolContext, finish, emit: EventCb) -> dict:
     attach_links(plan)
-    mp = await enrich_map(plan, ctx)
+    # маршрут, адреса и проверка ссылок «Сайт» — параллельно; неоткрывающиеся ссылки из плана убираем
+    mp, _, _ = await asyncio.gather(enrich_map(plan, ctx), add_addresses(plan, ctx),
+                                    drop_dead_links(plan) if not ctx.offline else asyncio.sleep(0))
     for day in plan.get("days") or []:
         fc = day.pop("_forecast", None)
         if fc:

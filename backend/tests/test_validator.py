@@ -177,3 +177,18 @@ async def test_good_plan_converges():
 async def test_empty_plan():
     checks = await validate_plan({"days": []}, parse_intents("", WED), ctx())
     assert summarize(checks)["errors"] == 1
+
+
+@pytest.mark.asyncio
+async def test_food_must_be_near_the_sights():
+    it = parse_intents("в субботу пешком по Владивостоку", WED)
+    museum = place("vl_s56", "Подлодка С-56", 43.1150, 131.8890, "11:00")
+    far = {"time": "13:00", "type": "food", "name": "Кафе в Артёме", "lat": 43.3540, "lon": 132.1880}
+    near = {"time": "13:00", "type": "food", "name": "Кафе на Светланской", "lat": 43.1160, "lon": 131.8920}
+    c = ctx()
+    sunny(c, [SAT])
+    bad = checks_by_id(await validate_plan({"transport": "foot", "days": [{"date": SAT, "items": [museum, far]}]}, it, c))
+    assert not bad["food_nearby"].ok and "Кафе в Артёме" in bad["food_nearby"].text and bad["food_nearby"].severity == "error"
+    good = checks_by_id(await validate_plan({"transport": "foot", "days": [{"date": SAT, "items": [museum, near]}]}, it, c))
+    assert good["food_nearby"].ok
+

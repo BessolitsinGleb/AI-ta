@@ -6,7 +6,7 @@ import respx
 
 from app.tools import ALL_TOOLS
 from app.tools.base import ToolContext
-from app.tools.fuel import availability
+from app.tools.fuel import station_info
 
 WED = date(2026, 10, 21)
 
@@ -114,6 +114,7 @@ async def test_fuel_along_route_offline():
     assert full["stations"] and full["max_gap_km"] < route["distance_km"]
     assert [s["km_from_start"] for s in full["stations"]] == sorted(s["km_from_start"] for s in full["stations"])
     assert visible["with_fuel"] == full["stations_with_fuel"]
+    assert any(v is not None for st in full["stations"] for v in st["fuel"].values())  # из снимка OSM, не мок
 
 
 @pytest.mark.asyncio
@@ -122,8 +123,33 @@ async def test_fuel_unknown_route():
     assert "error" in full
 
 
-def test_fuel_availability_is_deterministic():
-    assert availability("f1", "2026-10-24") == availability("f1", "2026-10-24")
+def test_fuel_station_from_osm_tags():
+    st = station_info({"id": 7, "lat": 43.1, "lon": 131.9, "tags": {
+        "brand": "Роснефть", "fuel:octane_92": "yes", "fuel:diesel": "no", "fuel:lpg": "yes", "opening_hours": "24/7",
+        "shop": "convenience", "toilets": "yes", "payment:cards": "yes", "addr:street": "Снеговая улица", "addr:housenumber": "1"}})
+    assert st["name"] == "Роснефть" and st["hours"] == "круглосуточно"
+    assert st["fuel"] == {"АИ-92": True, "АИ-95": None, "ДТ": False, "Газ": True}  # не указано — None, а не выдумка
+    assert {"магазин", "туалет", "оплата картой"} <= set(st["services"]) and st["address"] == "Снеговая улица 1"
+
+
+@pytest.mark.asyncio
+async def test_food_skips_places_with_dead_sites(monkeypatch):
+    from app.tools import food
+
+    async def nominatim(q, box, limit=10):
+        return [{"name": "Бар-призрак", "lat": "43.1160", "lon": "131.8860", "extratags": {"website": "https://gone.example"}},
+                {"name": "Живое кафе", "lat": "43.1170", "lon": "131.8870", "extratags": {"website": "https://alive.example"}},
+                {"name": "Кафе без следов", "lat": "43.1150", "lon": "131.8850", "extratags": {}}]
+
+    async def status(urls, parallel=6):
+        return {u: u == "https://alive.example" for u in urls}
+
+    monkeypatch.setattr(food, "_nominatim_raw", nominatim)
+    monkeypatch.setattr(food, "check_many", status)
+    full, visible = await run("find_food", {"near_lat": 43.1155, "near_lon": 131.8855}, online())
+    names = [p["name"] for p in full["places"]]
+    assert "Бар-призрак" not in names and names[0] == "Живое кафе"  # сайт открывается — первым
+    assert next(p for p in visible["places"] if p["name"] == "Кафе без следов")["unverified"] is True
 
 
 @pytest.mark.asyncio
