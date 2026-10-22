@@ -11,8 +11,8 @@ const ROOT = path.resolve(__dirname, "..");
 const IMG = path.join(ROOT, "docs", "img");
 const OUT = path.join(__dirname, "Amba_Travel_AI.pptx");
 const DEMO_URL = "https://amba-production-3ab7.up.railway.app";
-// Финальный QR — пасхалка docs/egg (GitHub Pages): клип без рекламы, сразу играет; запасная ссылка — Rutube.
-const FINAL_QR_URL = "https://bessolitsingleb.github.io/AI-ta/egg/";
+// Финальный QR — пасхалка: прямой mp4 из Internet Archive, открывается во встроенном плеере телефона, без рекламы.
+const FINAL_QR_URL = "https://archive.org/download/Rick_Astley_Never_Gonna_Give_You_Up/Rick_Astley_Never_Gonna_Give_You_Up.mp4";
 const REPO_URL = "github.com/BessolitsinGleb/AI-ta";
 
 const THEME = {
