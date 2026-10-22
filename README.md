@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Python-3.12-0F2D3A?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/DeepSeek-OpenRouter-3D5A66?style=for-the-badge" alt="DeepSeek через OpenRouter">
-  <img src="https://img.shields.io/badge/тесты-142%20passed-2E6B62?style=for-the-badge" alt="Тесты">
+  <img src="https://img.shields.io/badge/тесты-144%20passed-2E6B62?style=for-the-badge" alt="Тесты">
 </p>
 
 <p align="center">

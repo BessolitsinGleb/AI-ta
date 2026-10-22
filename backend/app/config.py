@@ -43,6 +43,8 @@ class Settings:
     plan_limit_min: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_PER_MIN", "6")))
     plan_limit_hour: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_PER_HOUR", "40")))
     plan_limit_user_hour: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_USER_PER_HOUR", "60")))
+    # Планы строит модель за деньги — только для вошедших. REQUIRE_LOGIN=0 открывает поиск гостям (тесты, локальная отладка).
+    require_login: bool = field(default_factory=lambda: os.getenv("REQUIRE_LOGIN", "1") == "1")
 
     # --- Аккаунты ---
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", f"sqlite:///{ROOT_DIR / 'data' / 'amba.db'}"))

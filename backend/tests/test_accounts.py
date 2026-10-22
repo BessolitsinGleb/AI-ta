@@ -168,6 +168,29 @@ def test_guest_plans_are_not_saved(client):
     assert body["status"] == "plan" and "trip_id" not in body
 
 
+def test_plans_require_login(client, monkeypatch):
+    from dataclasses import replace
+
+    from app import main
+
+    async def no_agent(*a, **kw):  # pragma: no cover — до модели гость дойти не должен
+        raise AssertionError("агент не должен запускаться для гостя")
+
+    monkeypatch.setattr(main, "settings", replace(main.settings, require_login=True))
+    monkeypatch.setattr(main, "run_agent", no_agent)
+    assert client.get("/api/versions").json()["login_required"] is True
+    query = {"query": "В субботу на автобусе в Находку на один день", "answers": []}
+    for path in ("/api/plan", "/api/plan/stream"):
+        r = client.post(path, json=query)
+        assert r.status_code == 401 and "Войдите" in r.json()["detail"]
+    assert client.post("/api/plan", headers={"Authorization": "Bearer forged.token.here"}, json=query).status_code == 401
+
+    monkeypatch.undo()
+    monkeypatch.setattr(main, "settings", replace(main.settings, require_login=True))
+    token = signed_in(client)
+    assert client.post("/api/plan", headers=auth(token), json=query).json()["status"] == "plan"
+
+
 def test_delete_account(client):
     token = signed_in(client)
     assert client.delete("/api/me", headers=auth(token)).status_code == 204

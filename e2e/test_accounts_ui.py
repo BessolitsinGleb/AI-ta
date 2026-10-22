@@ -83,3 +83,36 @@ def test_guest_gets_hint_and_login_errors(browser, base_url):
     assert "Неверная почта или пароль" in page.inner_text(".form-msg")
     assert page.evaluate("document.documentElement.scrollWidth") <= 390
     page.close()
+
+
+def test_guest_must_login_before_plan(browser, base_url, monkeypatch):
+    """Гость пишет запрос → вход → план собирается сам, запрос не теряется."""
+    import json
+    import urllib.request
+    from dataclasses import replace
+
+    from app import mailer, main
+
+    monkeypatch.setattr(main, "settings", replace(main.settings, require_login=True))
+    req = urllib.request.Request(f"{base_url}/api/auth/register", method="POST", headers={"Content-Type": "application/json"},
+                                 data=json.dumps({"email": "guest@example.com", "password": "Tiger2026!", "name": "Гость"}).encode())
+    urllib.request.urlopen(req)
+    link = re.search(r"https?://\S+", mailer.outbox[-1].text).group(0).replace("http://localhost:8000", base_url)
+    urllib.request.urlopen(link)  # почта подтверждена в стороннем «браузере» — в тестовом гость остаётся гостем
+
+    page = browser.new_page(viewport={"width": 1366, "height": 900})
+    page.goto(base_url)
+    page.wait_for_selector("#guest-note:not([hidden])")
+    assert page.inner_text("#submit") == "Войти и собрать план"
+    page.fill("#q", "В субботу на автобусе в Находку на один день")
+    page.click("#submit")
+    page.wait_for_selector("#toast >> text=Запрос сохранили")
+    assert "#/login" in page.url and page.locator("#result .plan").count() == 0
+
+    page.fill("input[name=email]", "guest@example.com")
+    page.fill("input[name=password]", "Tiger2026!")
+    page.click("button[type=submit]")
+    page.wait_for_selector("#result .plan h2, #questions", timeout=30000)
+    assert page.input_value("#q").startswith("В субботу на автобусе в Находку")
+    assert page.locator("#guest-note").is_hidden() and page.inner_text("#submit") == "Собрать план"
+    page.close()

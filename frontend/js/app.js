@@ -3,7 +3,8 @@ import * as pages from "./pages.js";
 import { esc, humanDate, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
-const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "", conversation: null };
+const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "", conversation: null, loginRequired: true };
+const PENDING_KEY = "amba-pending-query";
 
 function readView() {
   try { return localStorage.getItem("amba-view") === "logbook" ? "logbook" : "modern"; } catch { return "modern"; }
@@ -38,7 +39,31 @@ function toast(html) {
 
 // ---------- аккаунт в шапке ----------
 
+// Гостю поиск закрыт: подсказка под формой и кнопка «Войти и собрать план»
+function renderGuestNote() {
+  const guest = !currentUser() && state.loginRequired;
+  $("#guest-note").hidden = !guest;
+  $("#submit").textContent = guest ? "Войти и собрать план" : "Собрать план";
+}
+
+// Запрос гостя ждёт входа: после логина план соберётся сам (полчаса — чтобы не всплыл через день)
+function askLogin(query) {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify({ query, at: Date.now() })); } catch { /* приватный режим */ }
+  toast("Войдите, чтобы Амба собрала план. Запрос сохранили — продолжим сразу после входа");
+  navigate("/login?next=/");
+}
+
+function takePending() {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    localStorage.removeItem(PENDING_KEY);
+    const p = raw && JSON.parse(raw);
+    return p && Date.now() - p.at < 30 * 60 * 1000 ? p.query : "";
+  } catch { return ""; }
+}
+
 function renderAccount(user) {
+  renderGuestNote();
   const box = $("#account");
   if (!user) {
     box.innerHTML = '<a class="go small" href="#/login">Войти</a>';
@@ -100,6 +125,9 @@ async function route() {
     if (trip) {
       if (!currentUser()) return navigate(`/login?next=${encodeURIComponent(path)}`);
       openTrip(trip[1]);
+    } else if (currentUser()) {
+      const pending = takePending();
+      if (pending) startPlan(pending);
     }
     return;
   }
@@ -144,6 +172,8 @@ async function loadMeta() {
       fetch("/api/versions").then((r) => r.json()),
       fetch("/api/examples").then((r) => r.json()),
     ]);
+    state.loginRequired = vers.login_required !== false;
+    renderGuestNote();
     const sel = $("#version");
     sel.innerHTML = vers.versions.map((v) =>
       `<option value="${esc(v.key)}"${v.key === vers.default ? " selected" : ""}>${esc(v.key)} · ${esc(v.label)}${vers.demo ? "" : ` — ${esc(v.model)}`}</option>`).join("");
@@ -317,7 +347,9 @@ async function streamPlan(body) {
   });
   if (!resp.ok || !resp.body) {
     const data = await resp.json().catch(() => null);
-    throw new Error(typeof data?.detail === "string" ? data.detail : `Ошибка ${resp.status}`);
+    const err = new Error(typeof data?.detail === "string" ? data.detail : `Ошибка ${resp.status}`);
+    err.status = resp.status;
+    throw err;
   }
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -371,6 +403,8 @@ async function refine(message) {
 
 async function ask(query, answers) {
   if (state.busy) return;
+  await metaReady;
+  if (!currentUser() && state.loginRequired) return askLogin(query);
   state.query = query;
   renderChat(null);
   state.busy = true;
@@ -389,7 +423,12 @@ async function ask(query, answers) {
     showResult(result);
     afterResult(result);
   } catch (e) {
-    showResult({ status: "error", error: e.message });
+    if (e.status === 401) {  // сессия истекла — после входа продолжим с того же запроса
+      $("#workspace").hidden = true;
+      askLogin(query);
+    } else {
+      showResult({ status: "error", error: e.message });
+    }
   } finally {
     state.busy = false;
     $("#submit").disabled = false;
@@ -409,7 +448,7 @@ function afterResult(result) {
 }
 
 const mascotReady = loadMascot();
-loadMeta();
+const metaReady = loadMeta();
 setupForm();
 onAuth(renderAccount);
 window.addEventListener("hashchange", route);

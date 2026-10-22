@@ -94,7 +94,7 @@ async def health() -> dict:
 
 @app.get("/api/versions")
 async def get_versions() -> dict:
-    return {"default": settings.default_version, "demo": not settings.openrouter_api_key,
+    return {"default": settings.default_version, "demo": not settings.openrouter_api_key, "login_required": settings.require_login,
             "versions": [{"key": v.key, "label": v.label, "model": v.model} for v in versions().values()]}
 
 
@@ -131,6 +131,8 @@ def _limit_plans(request: Request, user) -> None:
 async def _prepare(req: PlanRequest, request: Request):
     """Пользователь, подсказка из анкеты и (для доработки) диалог. Всё, что может отказать, — до старта агента."""
     user, hint = await _account(request)
+    if user is None and settings.require_login:
+        raise HTTPException(401, "Войдите, чтобы Амба собрала план", headers={"WWW-Authenticate": "Bearer"})
     _limit_plans(request, user)
     conv = None
     if req.conversation_id:

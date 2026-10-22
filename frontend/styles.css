@@ -89,6 +89,8 @@ textarea:focus { outline: none; }
 .go:hover { background: var(--tiger-deep); }
 .go:active { transform: translateY(1px); }
 .go:disabled { background: var(--sea-3); cursor: progress; }
+.guest-note { margin: 14px 0 0; padding: 10px 14px; font-size: 14px; line-height: 1.45; color: var(--sea-2); background: var(--tiger-soft); border-radius: var(--r-md); }
+.guest-note a { color: var(--tiger-deep); font-weight: 600; }
 .examples { display: flex; gap: 10px 14px; align-items: baseline; margin-top: 18px; flex-wrap: wrap; }
 .examples-title { font-size: 14px; color: var(--sea-3); }
 .examples-list { display: flex; flex-wrap: wrap; gap: 6px 18px; }
