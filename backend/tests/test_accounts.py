@@ -270,3 +270,17 @@ def test_profile_hint_reaches_agent(client, monkeypatch):
     client.patch("/api/me", headers=auth(token), json={"interests": ["food"], "companions": "kids", "onboarded": True})
     client.post("/api/plan", headers=auth(token), json={"query": "Куда в субботу?"})
     assert "еда" in seen["profile_hint"] and "с детьми" in seen["profile_hint"]
+
+
+def test_signup_without_email_on_hosts_without_smtp(client, monkeypatch):
+    from dataclasses import replace
+
+    from app import accounts
+    monkeypatch.setattr(accounts, "settings", replace(accounts.settings, email_verify=False))
+    r = client.post("/api/auth/register", json={"email": "render@example.com", "password": PW, "name": "Гость"})
+    assert r.json()["access_token"] and "amba_refresh" in r.headers["set-cookie"] and not mailer.outbox  # сразу вошли
+    assert client.get("/api/me", headers=auth(r.json()["access_token"])).json()["email"] == "render@example.com"
+    again = TestClient(app).post("/api/auth/register", json={"email": "render@example.com", "password": "Other2026x", "name": "Вор"})
+    assert again.status_code == 409  # чужой аккаунт повторной регистрацией не перехватить
+    assert login(TestClient(app), email="render@example.com").status_code == 200
+

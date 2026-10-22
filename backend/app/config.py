@@ -58,6 +58,9 @@ class Settings:
     # Адрес для ссылок в письмах; Render сам отдаёт RENDER_EXTERNAL_URL
     public_url: str = field(default_factory=lambda: (os.getenv("PUBLIC_URL") or os.getenv("RENDER_EXTERNAL_URL")
                                                      or "http://localhost:8000").rstrip("/"))
+    # Подтверждение почты. На бесплатном Render исходящий SMTP закрыт — письма не уходят, поэтому там (RENDER задан
+    # самим Render) регистрация сразу входит в аккаунт. EMAIL_VERIFY=1/0 переопределяет.
+    email_verify: bool = field(default_factory=lambda: os.getenv("EMAIL_VERIFY", "0" if os.getenv("RENDER") else "1") == "1")
     cookie_secure: bool = field(default_factory=lambda: os.getenv("COOKIE_SECURE", "0") == "1")
     # Почта: Gmail SMTP с паролем приложения. Пустой SMTP_PASSWORD — письма пишутся в лог (режим разработки).
     smtp_host: str = field(default_factory=lambda: os.getenv("SMTP_HOST", "smtp.gmail.com"))

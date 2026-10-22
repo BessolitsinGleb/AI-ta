@@ -157,10 +157,18 @@ def _aware(dt: datetime) -> datetime:
 # ---------- auth ----------
 
 @router.post("/auth/register", status_code=202)
-async def register(body: RegisterIn, request: Request, db: DB) -> dict:
+async def register(body: RegisterIn, request: Request, response: Response, db: DB) -> dict:
     ratelimit.check_ip(request, "register", 5, 3600)
     email = norm_email(body.email)
     user = db.scalar(select(User).where(User.email == email))
+    if not settings.email_verify:  # хостинг без почты: аккаунт сразу подтверждён, сразу входим
+        if user is not None:  # без письма нельзя доказать владение адресом — чужой аккаунт не отдаём
+            raise HTTPException(409, "Эта почта уже зарегистрирована — войдите")
+        user = User(email=email, password_hash=security.hash_password(body.password), name=body.name.strip(),
+                    email_verified_at=utcnow())
+        db.add(user)
+        db.commit()
+        return _issue(response, user, db, request)
     if user is None:
         user = User(email=email, password_hash=security.hash_password(body.password), name=body.name.strip())
         db.add(user)
@@ -211,6 +219,9 @@ def login(body: LoginIn, request: Request, response: Response, db: DB) -> dict:
     ok = security.verify_password(body.password, user.password_hash if user else security.DUMMY_HASH)
     if not user or not ok:
         raise HTTPException(401, "Неверная почта или пароль")
+    if not user.verified and not settings.email_verify:  # зарегистрировался, пока письма не уходили
+        user.email_verified_at = utcnow()
+        db.commit()
     if not user.verified:
         raise HTTPException(403, "Сначала подтвердите почту — ссылка в письме", headers={"X-Error-Code": "email_not_verified"})
     return _issue(response, user, db, request)

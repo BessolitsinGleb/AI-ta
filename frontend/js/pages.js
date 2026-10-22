@@ -100,7 +100,12 @@ export function registerPage(el, { navigate, mascot }) {
     if (!validPassword(f.password.value)) return formError(f, "Пароль: минимум 8 символов, буквы и цифры");
     submitting(f, async () => {
       const email = f.email.value.trim();
-      await api("/api/auth/register", { method: "POST", auth: false, body: { email, password: f.password.value, name: f.name.value.trim() } });
+      const r = await api("/api/auth/register", { method: "POST", auth: false, body: { email, password: f.password.value, name: f.name.value.trim() } });
+      if (r?.access_token) {  // сервер без почты: аккаунт готов сразу — к анкете интересов
+        setSession(r);
+        navigate("/welcome");
+        return;
+      }
       sessionStorage.setItem("amba-pending-email", email);
       navigate("/check-email");
     });
