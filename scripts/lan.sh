@@ -33,5 +33,10 @@ if command -v node >/dev/null && [ -d presentation/node_modules/qrcode ]; then
   ' "$URL"
   echo "QR для экрана: data/lan-qr.png (open data/lan-qr.png)"
 fi
+# QR «Приложение» в презентации — на этот же адрес (PDF пересобирается через LibreOffice, ~полминуты)
+if [ "${SKIP_DECK:-0}" != 1 ] && [ -x .venv/bin/python ]; then
+  .venv/bin/python presentation/set_app_qr.py "$URL" >/dev/null && echo "Презентация: QR приложения ведёт на $URL (presentation/Amba_TBank.pptx и .pdf)" \
+    || echo "Презентацию обновить не вышло — запустите: .venv/bin/python presentation/set_app_qr.py $URL" >&2
+fi
 echo "Амба доступна в сети: $URL"
 echo "Чтобы ноутбук не уснул во время показа: caffeinate -dis"

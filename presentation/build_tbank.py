@@ -365,8 +365,8 @@ def main() -> None:
     twin_shape.fill.solid()
     from pptx.dml.color import RGBColor
     twin_shape.fill.fore_color.rgb = RGBColor(0xEF, 0xF0, 0xF1)
-    for qr_png, left in ((ASSETS / "qr_site.png", 8.3), (ASSETS / "qr_demo.png", plate.left / 914400)):
-        picture(s, qr_png, left + 0.45, plate.top / 914400 + 0.45, w=plate.width / 914400 - 0.9)
+    for qr_png, left, name in ((ASSETS / "qr_site.png", 8.3, "qr-site"), (ASSETS / "qr_demo.png", plate.left / 914400, "qr-app")):
+        picture(s, qr_png, left + 0.45, plate.top / 914400 + 0.45, w=plate.width / 914400 - 0.9).name = name  # qr-app меняет set_app_qr.py
 
     # 12. Финал
     s = S[11]
