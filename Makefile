@@ -1,4 +1,4 @@
-.PHONY: install dev test test-back test-front eval eval-demo deck docker
+.PHONY: install dev test test-back test-front eval eval-demo deck docker lan
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
@@ -25,3 +25,6 @@ deck:
 
 docker:
 	docker compose up -d --build
+
+lan:
+	./scripts/lan.sh

@@ -6,6 +6,7 @@ services:
     env_file: .env
     environment:
       REDIS_URL: redis://redis:6379/0   # лимиты запросов и история диалогов
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8000}   # адрес для ссылок в письмах; scripts/lan.sh подставляет IP ноутбука
     ports:
       - "${PORT:-8000}:8000"
     volumes:
