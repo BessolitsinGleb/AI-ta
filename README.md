@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Python-3.12-0F2D3A?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/DeepSeek-OpenRouter-3D5A66?style=for-the-badge" alt="DeepSeek через OpenRouter">
-  <img src="https://img.shields.io/badge/тесты-145%20passed-2E6B62?style=for-the-badge" alt="Тесты">
+  <img src="https://img.shields.io/badge/тесты-146%20passed-2E6B62?style=for-the-badge" alt="Тесты">
 </p>
 
 <p align="center">
@@ -193,7 +193,7 @@ docker compose up -d --build
 
 Поднимутся два контейнера: приложение и Redis. Откройте **http://localhost:8000**. Без ключа OpenRouter работает демо-режим на правилах.
 
-Чтобы открыть Амбу с телефонов в той же Wi-Fi-сети, запустите `make lan`: скрипт сам найдёт IP ноутбука, пропишет его в ссылки из писем и в QR «Приложение» на 11-м слайде презентации, покажет адрес и QR-код.
+Чтобы открыть Амбу с телефонов в той же Wi-Fi-сети, запустите `make lan`: скрипт сам найдёт IP ноутбука, пропишет его в ссылки из писем, в QR «Приложение» на сайте команды, визитке и 11-м слайде презентации и покажет адрес и QR-код. Сайт команды после смены адреса публикуется командой `make publish-site`.
 
 <details>
 <summary><b>Без Docker</b></summary>

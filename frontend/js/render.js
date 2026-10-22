@@ -77,9 +77,13 @@ export function linksHtml(links = []) {
   return `<span class="links">${safe.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a>`).join("")}</span>`;
 }
 
-function stop(it) {
+// Точка с координатами связана с картой: клик по ней показывает метку (см. app.js, drawMap)
+const onMap = (it) => Number.isFinite(parseFloat(it?.lat)) && Number.isFinite(parseFloat(it?.lon));
+const mapRef = (it, day, item) => (onMap(it) ? ` data-map-day="${day}" data-map-item="${item}" tabindex="0" title="Показать на карте"` : "");
+
+function stop(it, day, i) {
   const kind = KIND_RU[it.type];
-  return `<li class="stop type-${esc(it.type || "note")}"><time>${esc(it.time || "")}</time><div>` +
+  return `<li class="stop type-${esc(it.type || "note")}"${mapRef(it, day, i)}><time>${esc(it.time || "")}</time><div>` +
     `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${it.details ? `<p>${esc(it.details)}</p>` : ""}` +
     `${linksHtml(it.links)}</div></li>`;
 }
@@ -124,11 +128,11 @@ export function renderPlan(result) {
   if (nights) facts.push(["Ночёвок", String(nights)]);
   const dayHtml = days.map((d, i) => {
     const lod = d.lodging && d.lodging.name
-      ? `<div class="lodging"><span><span class="lodging-k">Ночёвка:</span> ${esc(d.lodging.name)}${d.lodging.price_rub ? `, ~${Number(d.lodging.price_rub).toLocaleString("ru-RU")} ₽ за ночь` : ""}</span>${linksHtml(d.lodging.links)}</div>`
+      ? `<div class="lodging"${mapRef(d.lodging, i, "lodging")}><span><span class="lodging-k">Ночёвка:</span> ${esc(d.lodging.name)}${d.lodging.price_rub ? `, ~${Number(d.lodging.price_rub).toLocaleString("ru-RU")} ₽ за ночь` : ""}</span>${linksHtml(d.lodging.links)}</div>`
       : "";
-    return `<li class="day"><span class="day-num" style="background:${DAY_COLORS[i % DAY_COLORS.length]}">${i + 1}</span>
+    return `<li class="day"><span class="day-num" data-focus-day="${i}" role="button" tabindex="0" title="Показать этот день на карте" style="background:${DAY_COLORS[i % DAY_COLORS.length]}">${i + 1}</span>
       <div class="day-head"><div><h3>${esc(humanDate(d.date))}</h3>${d.title ? `<p class="day-sub">${esc(d.title)}</p>` : ""}</div>${weatherChip(d.weather)}</div>
-      <ol class="stops">${(d.items || []).map(stop).join("")}</ol>${lod}</li>`;
+      <ol class="stops">${(d.items || []).map((it, k) => stop(it, i, k)).join("")}</ol>${lod}</li>`;
   }).join("");
   const cautions = (plan.cautions || []).map((c) => `<li>${esc(c)}</li>`).join("");
   return `<article class="plan" aria-label="План поездки">

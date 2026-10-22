@@ -1,6 +1,6 @@
 import { api, currentUser, freshAuthHeader, logout, onAuth, refresh } from "./api.js";
 import * as pages from "./pages.js";
-import { esc, humanDate, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
+import { esc, humanDate, linksHtml, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
 const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "", conversation: null, loginRequired: true };
@@ -261,36 +261,158 @@ function ensureMap() {
   state.layers = L.layerGroup().addTo(state.map);
 }
 
+// ---------- карта: дни — отдельные слои, легенда — переключатели, план и карта связаны ----------
+
+const WIDE = window.matchMedia("(min-width: 1101px)");  // на широком экране карта висит сбоку от плана
+const sameSpot = (m, it) => it && it.name === m.name && Math.abs(Number(it.lat) - m.lat) < 1e-6 && Math.abs(Number(it.lon) - m.lon) < 1e-6;
+
+function popupHtml(m, item, dayNum) {
+  const meta = [`День ${dayNum}`, m.time, m.type === "lodging" ? "ночёвка" : ""].filter(Boolean).join(" · ");
+  return `<b>${esc(m.name)}</b><br><span class="pop-meta">${esc(meta)}</span>${linksHtml(item?.links)}`;
+}
+
 function drawMap(mp) {
   ensureMap();
   if (!state.map) return;
   state.layers.clearLayers();
-  const bounds = [];
-  const legend = [];
-  (mp?.days || []).forEach((day) => {
+  const planDays = state.result?.plan?.days || [];
+  state.mapDays = (mp?.days || []).map((day, d) => {
+    const group = L.featureGroup();
     if (day.geometry?.length > 1) {
       L.polyline(day.geometry, { color: day.color, weight: 5, opacity: .9, dashArray: day.approx ? "3 9" : (mp.mode === "bus" || mp.mode === "train" ? "10 8" : null) })
-        .bindTooltip(day.approx ? "Маршрут примерный: сервис дорог не ответил" : `День ${day.day}`).addTo(state.layers);
-      bounds.push(...day.geometry);
+        .bindTooltip(day.approx ? `День ${day.day}: маршрут примерный, сервис дорог не ответил` : `День ${day.day}`, { sticky: true })
+        .on("click", () => focusDay(state.focusDay === d ? null : d))
+        .addTo(group);
     }
-    day.markers.forEach((m, i) => {
-      const icon = L.divIcon({ className: "", html: `<div class="pin" style="background:${day.color}"><span>${m.type === "lodging" ? "☾" : i + 1}</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
-      L.marker([m.lat, m.lon], { icon, title: m.name }).bindPopup(`<b>${esc(m.name)}</b>${m.time ? `<br>${esc(m.time)}` : ""}`).addTo(state.layers);
-      bounds.push([m.lat, m.lon]);
+    const items = planDays[d]?.items || [];
+    const markers = day.markers.map((m, i) => {
+      const lodging = m.type === "lodging";
+      const item = lodging ? planDays[d]?.lodging : items.find((it) => sameSpot(m, it));
+      const icon = L.divIcon({ className: "", html: `<div class="pin" style="background:${day.color}"><span>${lodging ? "☾" : i + 1}</span></div>`,
+        iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -26] });
+      const ref = { lodging, item: lodging ? "lodging" : String(items.indexOf(item)) };
+      ref.marker = L.marker([m.lat, m.lon], { icon, title: m.name, riseOnHover: true }).bindPopup(popupHtml(m, item, day.day))
+        .on("click", () => flashStop(d, ref)).addTo(group);
+      return ref;
     });
-    legend.push(`<span><i style="background:${day.color}"></i>День ${day.day}</span>`);
+    group.addTo(state.layers);
+    return { group, markers };
   });
-  (mp?.fuel || []).forEach((s) => {
+  state.fuelLayer = L.layerGroup((mp?.fuel || []).map((s) => {
     const has = Object.values(s.fuel || {}).some(Boolean);
-    L.circleMarker([s.lat, s.lon], { radius: 5, color: has ? "#2e6b62" : "#c2321f", fillOpacity: .9, weight: 2 })
-      .bindPopup(`<b>${esc(s.name)}</b><br>${Object.entries(s.fuel || {}).map(([k, v]) => `${esc(k)}: ${v ? "есть" : "нет"}`).join(", ")}`)
-      .addTo(state.layers);
-  });
-  if ((mp?.fuel || []).length) legend.push(`<span><i style="background:#2e6b62;height:8px;width:8px;border-radius:50%"></i>АЗС с топливом</span>`);
-  if ((mp?.days || []).some((d) => d.approx)) legend.push("<span>Пунктир — маршрут примерный</span>");
-  $("#legend").innerHTML = legend.join("");
-  if (bounds.length) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 });
+    return L.circleMarker([s.lat, s.lon], { radius: 5, color: has ? "#2e6b62" : "#c2321f", fillOpacity: .9, weight: 2 })
+      .bindPopup(`<b>${esc(s.name)}</b><br>${Object.entries(s.fuel || {}).map(([k, v]) => `${esc(k)}: ${v ? "есть" : "нет"}`).join(", ")}`);
+  })).addTo(state.layers);
+  state.focusDay = null;
+  renderLegend(mp);
+  fitMap(false);
   setTimeout(() => state.map.invalidateSize(), 50);
+}
+
+function renderLegend(mp) {
+  const days = mp?.days || [];
+  const parts = days.length > 1 ? ['<button type="button" class="lg-btn" data-day="all" aria-pressed="true">Все дни</button>'] : [];
+  days.forEach((day, i) => parts.push(`<button type="button" class="lg-btn" data-day="${i}" aria-pressed="false" style="--c:${day.color}" title="Показать только этот день"><i></i>День ${day.day}</button>`));
+  if ((mp?.fuel || []).length) parts.push('<button type="button" class="lg-btn" data-fuel aria-pressed="true" title="Показать или скрыть заправки"><i class="dot"></i>АЗС с топливом</button>');
+  if (days.some((d) => d.approx)) parts.push('<span class="lg-note">Пунктир — маршрут примерный</span>');
+  $("#legend").innerHTML = parts.join("");
+}
+
+// Оставить на карте один день (d) или все (null); подсветить его в плане
+function focusDay(d) {
+  if (!state.mapDays?.length) return;
+  state.focusDay = d;
+  state.mapDays.forEach((day, i) => {
+    if (d === null || i === d) day.group.addTo(state.layers);
+    else state.layers.removeLayer(day.group);
+  });
+  const key = d === null ? "all" : String(d);
+  document.querySelectorAll("#legend [data-day]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.day === key)));
+  document.querySelectorAll("#result .day").forEach((el, i) => el.classList.toggle("map-focus", i === d));
+  fitMap(true);
+}
+
+function fitMap(animate) {
+  const bounds = L.latLngBounds([]);
+  state.mapDays.forEach((day, i) => {
+    if (state.focusDay !== null && i !== state.focusDay) return;
+    const b = day.group.getBounds();
+    if (b.isValid()) bounds.extend(b);
+  });
+  if (bounds.isValid()) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: state.focusDay === null ? 13 : 15, animate });
+}
+
+function mapRef(el) {
+  const day = state.mapDays?.[Number(el.dataset.mapDay)];
+  return day?.markers.find((r) => r.item === el.dataset.mapItem);
+}
+
+// Точка из плана → метка на карте
+function showOnMap(el) {
+  const ref = mapRef(el);
+  if (!ref) return;
+  const d = Number(el.dataset.mapDay);
+  if (state.focusDay !== null && state.focusDay !== d) focusDay(d);
+  state.map.flyTo(ref.marker.getLatLng(), Math.max(state.map.getZoom(), 15), { duration: .6 });
+  ref.marker.openPopup();
+  if (!WIDE.matches) $("#map").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// Метка на карте → точка в плане
+function flashStop(d, ref) {
+  const el = document.querySelector(`#result [data-map-day="${d}"][data-map-item="${ref.item}"]`);
+  if (!el) return;
+  el.classList.remove("flash");
+  void el.offsetWidth;  // перезапуск анимации при повторном клике
+  el.classList.add("flash");
+  const r = el.getBoundingClientRect();
+  if (WIDE.matches && (r.top < 0 || r.bottom > window.innerHeight)) el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+let hotRef = null;
+function setHot(ref) {
+  if (hotRef === ref) return;
+  if (hotRef) { hotRef.marker.getElement()?.classList.remove("pin-hot"); hotRef.marker.setZIndexOffset(0); }
+  hotRef = ref || null;
+  if (hotRef) { hotRef.marker.getElement()?.classList.add("pin-hot"); hotRef.marker.setZIndexOffset(1000); }
+}
+
+function setupMapLinks() {
+  $("#legend").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if ("fuel" in b.dataset) {
+      const on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", String(on));
+      if (on) state.fuelLayer.addTo(state.layers); else state.layers.removeLayer(state.fuelLayer);
+      return;
+    }
+    const d = b.dataset.day === "all" ? null : Number(b.dataset.day);
+    focusDay(d === state.focusDay ? null : d);
+  });
+  const act = (e) => {
+    if (e.target.closest("a, button")) return false;
+    const dayEl = e.target.closest("[data-focus-day]");
+    if (dayEl) {
+      const d = Number(dayEl.dataset.focusDay);
+      focusDay(state.focusDay === d ? null : d);
+      if (!WIDE.matches) $("#map").scrollIntoView({ behavior: "smooth", block: "center" });
+      return true;
+    }
+    const stopEl = e.target.closest("[data-map-day]");
+    if (stopEl) { showOnMap(stopEl); return true; }
+    return false;
+  };
+  const result = $("#result");
+  result.addEventListener("click", act);
+  result.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && act(e)) e.preventDefault();
+  });
+  result.addEventListener("mouseover", (e) => {
+    const el = e.target.closest("[data-map-day]");
+    setHot(el ? mapRef(el) : null);
+  });
+  result.addEventListener("mouseleave", () => setHot(null));
 }
 
 function renderChat(conv) {
@@ -450,6 +572,7 @@ function afterResult(result) {
 const mascotReady = loadMascot();
 const metaReady = loadMeta();
 setupForm();
+setupMapLinks();
 onAuth(renderAccount);
 window.addEventListener("hashchange", route);
 // восстанавливаем сессию по refresh-cookie и загружаем маскота, потом показываем страницу

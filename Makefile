@@ -1,4 +1,4 @@
-.PHONY: install dev test test-back test-front eval eval-demo deck docker lan
+.PHONY: install dev test test-back test-front eval eval-demo deck docker lan publish-site
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
@@ -28,3 +28,7 @@ docker:
 
 lan:
 	./scripts/lan.sh
+
+publish-site:
+	git add docs/site docs/card presentation/Amba_TBank.pptx presentation/Amba_TBank.pdf
+	git commit -m "Ссылка на приложение: $$(grep -o 'http://[0-9.]*:[0-9]*' docs/site/index.html | head -1)" && git push

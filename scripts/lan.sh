@@ -41,10 +41,14 @@ if command -v node >/dev/null && [ -d presentation/node_modules/qrcode ]; then
   echo "QR для экрана: data/lan-qr.png"
   [ "${NO_OPEN:-0}" = 1 ] || open data/lan-qr.png 2>/dev/null || true
 fi
-# QR «Приложение» в презентации — на этот же адрес (PDF пересобирается через LibreOffice, ~полминуты)
+# Ссылки и QR «Приложение» — на этот же адрес: сайт команды, визитка, презентация (PDF ~полминуты)
 if [ "${SKIP_DECK:-0}" != 1 ] && [ -x .venv/bin/python ]; then
-  .venv/bin/python presentation/set_app_qr.py "$URL" >/dev/null && echo "Презентация: QR приложения ведёт на $URL (presentation/Amba_TBank.pptx и .pdf)" \
-    || echo "Презентацию обновить не вышло — запустите: .venv/bin/python presentation/set_app_qr.py $URL" >&2
+  if .venv/bin/python scripts/set_app_url.py "$URL" >/dev/null; then
+    echo "Сайт, визитка и презентация ведут на $URL"
+    git diff --quiet -- docs/site 2>/dev/null || echo "Сайт команды на GitHub Pages обновится после: make publish-site"
+  else
+    echo "Ссылки обновить не вышло — запустите: .venv/bin/python scripts/set_app_url.py $URL" >&2
+  fi
 fi
 echo "Амба доступна в сети: $URL"
 echo "Чтобы ноутбук не уснул во время показа: caffeinate -dis"

@@ -92,3 +92,13 @@ test("демо-режим: не показываем оценку токенов
   assert.match(html, /расход токенов не считается/);
   assert.ok(!/3\s000 токенов/.test(html));
 });
+
+test("план связан с картой: день — фокус, точка с координатами — метка", () => {
+  const withCoords = structuredClone(result);
+  withCoords.plan.days[0].items[1] = { ...withCoords.plan.days[0].items[1], lat: 42.8, lon: 132.9 };
+  const html = renderPlan(withCoords);
+  assert.match(html, /data-focus-day="0"/);
+  assert.match(html, /data-map-day="0" data-map-item="1"/);
+  assert.doesNotMatch(html, /data-map-item="0"/);  // у автобуса нет координат — на карту не ведёт
+  assert.doesNotMatch(html, /data-map-item="lodging"/);
+});
