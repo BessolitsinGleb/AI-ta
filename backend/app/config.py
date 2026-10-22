@@ -39,6 +39,20 @@ class Settings:
     # Офлайн-режим: внешние API не вызываются, только датасеты (для тестов и демо без сети).
     offline: bool = field(default_factory=lambda: os.getenv("OFFLINE_MODE", "0") == "1")
 
+    # --- Аккаунты ---
+    database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", f"sqlite:///{ROOT_DIR / 'data' / 'amba.db'}"))
+    jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", ""))
+    access_ttl_min: int = field(default_factory=lambda: int(os.getenv("ACCESS_TTL_MIN", "15")))
+    refresh_ttl_days: int = field(default_factory=lambda: int(os.getenv("REFRESH_TTL_DAYS", "30")))
+    public_url: str = field(default_factory=lambda: os.getenv("PUBLIC_URL", "http://localhost:8000").rstrip("/"))
+    cookie_secure: bool = field(default_factory=lambda: os.getenv("COOKIE_SECURE", "0") == "1")
+    # Почта: Gmail SMTP с паролем приложения. Пустой SMTP_PASSWORD — письма пишутся в лог (режим разработки).
+    smtp_host: str = field(default_factory=lambda: os.getenv("SMTP_HOST", "smtp.gmail.com"))
+    smtp_port: int = field(default_factory=lambda: int(os.getenv("SMTP_PORT", "587")))
+    smtp_user: str = field(default_factory=lambda: os.getenv("SMTP_USER", ""))
+    smtp_password: str = field(default_factory=lambda: os.getenv("SMTP_PASSWORD", ""))
+    mail_from: str = field(default_factory=lambda: os.getenv("MAIL_FROM", ""))
+
 
     def key_for(self, version: str) -> str:
         """Отдельный ключ на версию (OPENROUTER_API_KEY_V1…), иначе общий."""

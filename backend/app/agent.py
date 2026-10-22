@@ -185,6 +185,7 @@ async def run_agent(
     offline: bool | None = None,
     answers: list[dict] | None = None,
     allow_questions: bool = True,
+    profile_hint: str = "",
 ) -> dict:
     emit = on_event or _noop
     t0 = time.perf_counter()
@@ -225,6 +226,8 @@ async def run_agent(
 
     system = full_prompt(today) if ver.prompt == "full" else baseline_prompt(today)
     user_text = query[:2000] + (f"\n\nУточнения клиента:\n{answers_text}" if answers_text else "")
+    if profile_hint:  # анкета из профиля: учитываем и не переспрашиваем
+        user_text += f"\n\nИз профиля клиента (учитывай, не переспрашивай): {profile_hint[:600]}"
     messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": user_text}]
     can_ask = allow_questions and not already_asked and ver.prompt == "full"  # спрашиваем максимум один раз
     tool_schemas = [t.schema() for t in ALL_TOOLS.values()] + FINISH_TOOLS + ([ASK_TOOL] if can_ask else [])

@@ -10,7 +10,7 @@ COPY backend ./backend
 COPY frontend ./frontend
 COPY eval ./eval
 
-RUN useradd --create-home amba && chown -R amba /app
+RUN useradd --create-home amba && mkdir -p /app/data && chown -R amba /app
 USER amba
 
 EXPOSE 8000

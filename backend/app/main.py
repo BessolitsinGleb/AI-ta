@@ -11,7 +11,12 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
+from fastapi.concurrency import run_in_threadpool
+
+from . import accounts
+from .accounts import optional_user, profile_hint, save_trip
 from .agent import run_agent, today_local, versions
+from .db import SessionLocal, init_db
 from .config import FRONTEND_DIR, settings
 from .http import close_client
 
@@ -29,6 +34,7 @@ _slots = asyncio.Semaphore(4)  # не больше 4 агентов одновр
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    init_db()
     yield
     await close_client()
 
@@ -94,6 +100,26 @@ async def examples() -> list[str]:
     return EXAMPLES
 
 
+async def _account(request: Request):
+    """Залогиненный пользователь (если есть) и подсказка агенту из его анкеты."""
+    def load():
+        with SessionLocal() as db:
+            user = optional_user(request, db)
+            return user, (profile_hint(user) if user and user.onboarded else "")
+    return await run_in_threadpool(load)
+
+
+async def _remember(user, query: str, result: dict) -> dict:
+    """План залогиненного пользователя сохраняется в «Мои поездки»."""
+    if user is None or result.get("status") != "plan":
+        return result
+    def store():
+        with SessionLocal() as db:
+            return save_trip(db, db.merge(user), query, result).id
+    result["trip_id"] = await run_in_threadpool(store)
+    return result
+
+
 def _version(v: str | None) -> str:
     key = v or settings.default_version
     if key not in versions():
@@ -102,14 +128,17 @@ def _version(v: str | None) -> str:
 
 
 @app.post("/api/plan")
-async def plan(req: PlanRequest) -> dict:
+async def plan(req: PlanRequest, request: Request) -> dict:
     async with _slots:
-        return await run_agent(req.query, _version(req.version), answers=req.answer_dicts())
+        user, hint = await _account(request)
+        result = await run_agent(req.query, _version(req.version), answers=req.answer_dicts(), profile_hint=hint)
+        return await _remember(user, req.query, result)
 
 
 @app.post("/api/plan/stream")
-async def plan_stream(req: PlanRequest) -> StreamingResponse:
+async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
     version = _version(req.version)
+    user, hint = await _account(request)
     queue: asyncio.Queue = asyncio.Queue()
 
     async def on_event(ev: dict) -> None:
@@ -118,7 +147,8 @@ async def plan_stream(req: PlanRequest) -> StreamingResponse:
     async def worker() -> None:
         async with _slots:
             try:
-                result = await run_agent(req.query, version, on_event=on_event, answers=req.answer_dicts())
+                result = await run_agent(req.query, version, on_event=on_event, answers=req.answer_dicts(), profile_hint=hint)
+                result = await _remember(user, req.query, result)
                 await queue.put({"type": "result", "result": result})
             except Exception as exc:  # pragma: no cover — страховка, чтобы стрим не повис
                 await queue.put({"type": "result", "result": {"status": "error", "error": f"{type(exc).__name__}: {exc}"}})
@@ -144,6 +174,8 @@ async def plan_stream(req: PlanRequest) -> StreamingResponse:
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+
+app.include_router(accounts.router)
 
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

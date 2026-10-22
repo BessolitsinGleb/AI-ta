@@ -9,3 +9,5 @@ presentation/node_modules/
 slide-*.jpg
 .DS_Store
 .claude/
+.test.db
+data/
