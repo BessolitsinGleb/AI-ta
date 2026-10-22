@@ -186,67 +186,65 @@
       const length = route.getTotalLength();
       route.style.strokeDasharray = `${length} ${length}`;
       route.style.strokeDashoffset = length;
-      let queued = false;
-      let lensQueued = false;
-      let focusX = window.innerWidth * .5;
-      let focusY = window.innerHeight * .42;
-      let targetFocusX = focusX;
-      let targetFocusY = focusY;
-      const easeLens = () => {
-        focusX += (targetFocusX - focusX) * .13;
-        focusY += (targetFocusY - focusY) * .13;
-        document.documentElement.style.setProperty('--focus-x', `${focusX}px`);
-        document.documentElement.style.setProperty('--focus-y', `${focusY}px`);
-        if (Math.abs(targetFocusX - focusX) > .35 || Math.abs(targetFocusY - focusY) > .35) {
-          window.requestAnimationFrame(easeLens);
-        } else {
-          focusX = targetFocusX;
-          focusY = targetFocusY;
-          lensQueued = false;
-        }
-      };
-      const updateRoute = () => {
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Маршрут догоняет скролл с мягким затуханием, а не прыгает на каждый щелчок колеса
+      let target = 0;
+      let current = 0;
+      let frame = 0;
+      let parallaxQueued = false;
+      const readScroll = () => {
         const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        const progress = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
+        target = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
+      };
+      const draw = (progress) => {
         document.documentElement.style.setProperty('--scroll-progress', progress.toFixed(4));
-        document.documentElement.style.setProperty('--hero-parallax', `${Math.max(-96, window.scrollY * -.075)}px`);
         route.style.strokeDashoffset = String(length * (1 - progress));
         const point = route.getPointAtLength(length * progress);
         traveler.setAttribute('transform', `translate(${point.x} ${point.y})`);
         trails.forEach((trail, index) => {
-          const trailPoint = route.getPointAtLength(Math.max(0, length * progress - length * (.014 + index * .014)));
+          const trailPoint = route.getPointAtLength(Math.max(0, length * progress - length * (.012 + index * .012)));
           trail.setAttribute('transform', `translate(${trailPoint.x} ${trailPoint.y})`);
         });
-        const svgPoint = route.ownerSVGElement.createSVGPoint();
-        svgPoint.x = point.x;
-        svgPoint.y = point.y;
-        const focus = svgPoint.matrixTransform(route.getScreenCTM());
-        targetFocusX = focus.x;
-        targetFocusY = focus.y;
-        if (!lensQueued) {
-          lensQueued = true;
-          window.requestAnimationFrame(easeLens);
-        }
         stops.forEach((stop) => stop.classList.toggle('is-lit', Number(stop.dataset.stop) <= progress + .015));
-        queued = false;
+      };
+      const tick = () => {
+        current += (target - current) * .085;
+        if (reduceMotion || Math.abs(target - current) < .0003) current = target;
+        draw(current);
+        frame = current === target ? 0 : window.requestAnimationFrame(tick);
+      };
+      const updateParallax = () => {
+        document.documentElement.style.setProperty('--hero-parallax', `${Math.max(-96, window.scrollY * -.075)}px`);
+        parallaxQueued = false;
       };
       const scheduleUpdate = () => {
-        if (!queued) { queued = true; window.requestAnimationFrame(updateRoute); }
+        readScroll();
+        if (!frame) frame = window.requestAnimationFrame(tick);
+        if (!parallaxQueued) { parallaxQueued = true; window.requestAnimationFrame(updateParallax); }
       };
       window.addEventListener('scroll', scheduleUpdate, { passive: true });
       window.addEventListener('resize', scheduleUpdate);
       window.addEventListener('load', scheduleUpdate, { once: true });
-      updateRoute();
+      readScroll();
+      current = target;
+      draw(current);
+      updateParallax();
 
       const revealItems = [...document.querySelectorAll('.section-heading, .project-intro, .feature-card, .data-note, .team-heading, .person, .qr-card, .closing-copy')];
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if ('IntersectionObserver' in window && !reduceMotion) {
         document.documentElement.classList.add('motion-ready');
         const revealObserver = new IntersectionObserver((entries, observer) => {
           entries.forEach((entry) => {
             if (!entry.isIntersecting) return;
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
+            const item = entry.target;
+            item.classList.add('is-visible');
+            observer.unobserve(item);
+            // после появления снимаем медленный переход и задержку, чтобы наведение откликалось сразу
+            item.addEventListener('transitionend', (event) => {
+              if (event.target !== item || event.propertyName !== 'transform') return;
+              item.classList.remove('reveal');
+              item.style.removeProperty('--reveal-delay');
+            });
           });
         }, { threshold: .12, rootMargin: '0px 0px -6% 0px' });
         revealItems.forEach((item, index) => {
