@@ -178,7 +178,7 @@ def main() -> None:
 
     # 3. Сравнение
     s = S[2]
-    put(s, 3, "Чем отличаемся от существующих решений")
+    put(s, 3, "Чем Амба отличается от аналогов")
     tbl = shape(s, 5).table
     total = shrink_table(tbl, rows=6, cols=5)
     rows = [["", "Чат-боты", "Агрегаторы", "Путеводители", "Амба"],
@@ -193,13 +193,26 @@ def main() -> None:
     w = total / 914400
     set_col_widths(tbl, [w * 0.37, w * 0.13, w * 0.16, w * 0.19, w * 0.15])
     from pptx.dml.color import RGBColor
-    for r in range(6):  # шаблон красит цифры в зелёный/красный — у нас это не значения со знаком
+    # Палитра «положительные / отрицательные значения» из шаблона: да — зелёный, частично — жёлтый, нет — розовый.
+    tone = {"да": RGBColor(0xDA, 0xEC, 0xBD), "частично": RGBColor(0xFF, 0xEE, 0x96), "нет": RGBColor(0xFF, 0xE1, 0xD5)}
+    for r in range(6):
         tbl.rows[r].height = Inches(7.9 / 6)
         for c in range(5):
-            for para in tbl.cell(r, c).text_frame.paragraphs:
+            cell = tbl.cell(r, c)
+            if r > 0 and c > 0:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = tone[rows[r][c]]
+                for para in cell.text_frame.paragraphs:
+                    para.alignment = 2  # по центру: цветные ячейки читаются как значки
+            if r == 0 and c == 4:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = RGBColor(0xFF, 0xDD, 0x2D)
+            for para in cell.text_frame.paragraphs:
+                if c > 0:
+                    para.alignment = 2
                 for run in para.runs:
                     run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
-                    run.font.bold = c == 4 and r > 0
+                    run.font.bold = (c == 4) or r == 0
 
     # 4. Как это выглядит
     s = S[3]
@@ -239,9 +252,19 @@ def main() -> None:
              "Тул не падает и переходит на оценку",
              "Агент видит пометку и учитывает её",
              "Маршрут на карте рисуется пунктиром"]]
+    from pptx.dml.color import RGBColor
+    heads = [RGBColor(0xFF, 0xDD, 0x2D), RGBColor(0xA2, 0xC6, 0xF9), RGBColor(0xB5, 0xB1, 0xEF)]  # основной жёлтый + доп. палитра
+    tints = [RGBColor(0xFF, 0xF4, 0xBF), RGBColor(0xE4, 0xEE, 0xFD), RGBColor(0xEC, 0xEA, 0xFC)]
     for c, col in enumerate(cols):
         for r, val in enumerate(col):
-            set_text(tbl.cell(r, c).text_frame, val)
+            cell = tbl.cell(r, c)
+            set_text(cell.text_frame, val)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = heads[c] if r == 0 else tints[c]
+            for para in cell.text_frame.paragraphs:
+                for run in para.runs:
+                    run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+                    run.font.bold = r == 0
 
     # 7. Проверка и guardrails
     s = S[6]
@@ -261,7 +284,7 @@ def main() -> None:
 
     # 8. Замеры
     s = S[7]
-    put(s, 14, "Замеры: 3 версии агента на 10 запросах")
+    put(s, 14, "Замеры: 3 версии агента")
     method = [("Набор", "7 поездок разным транспортом и 3 нецелевых запроса"),
               ("Качество", "Верный выбор тулов + доля пройденных проверок"),
               ("Стоимость", "Токены и $ из ответа OpenRouter"),
@@ -295,6 +318,9 @@ def main() -> None:
     s = S[9]
     put(s, 5, "Наша команда")
     put(s, 6, "Семь участников: люди и AI-агенты, у каждого своя зона ответственности")
+    for sid, w in ((5, 14.0), (6, 17.0)):  # шире, чтобы в любом шрифте оставались в одну строку
+        box = shape(s, sid)
+        box.left, box.width = Inches((21.65 - w) / 2), Inches(w)
     team = [  # (группа, плейсхолдер фото, имя, роль, инициалы, AI)
         (54, 3, "Opus 5.5", "Team Lead", "O5", True),
         (11, 10, "Саша Дё", "Backend developer", "СД", False),
@@ -320,6 +346,9 @@ def main() -> None:
     # 11. Код на GitHub + демо: две одинаковые QR-плашки
     s = S[10]
     put(s, 9, ["Код", "на GitHub"])
+    for para in shape(s, 9).text_frame.paragraphs:
+        for run in para.runs:
+            run.font.size = Pt(56)  # было 72: с запасом под широкие шрифты «на GitHub» в одну строку
     put(s, 10, REPO_URL)
     shape(s, 10).top, shape(s, 10).height = Inches(4.0), Inches(1.0)
     put(s, 5, "Демо")
@@ -344,6 +373,11 @@ def main() -> None:
     # 12. Финал
     s = S[11]
     put(s, 6, ["Спасибо", "за внимание!"])
+    thanks = shape(s, 6)
+    thanks.top, thanks.height = Inches(6.6), Inches(3.6)
+    for para in thanks.text_frame.paragraphs:
+        for run in para.runs:
+            run.font.size = Pt(92)  # было 115: в широких шрифтах «внимание!» обрезалось
     picture(s, ASSETS / "qr_egg.png", 9.9, 1.3, w=3.3)
     picture(s, ASSETS / "amba.png", 10.25, 4.9, h=2.2)
 
