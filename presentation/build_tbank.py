@@ -26,7 +26,6 @@ OUT = ROOT / "presentation" / "Amba_TBank.pptx"
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
 DEMO_URL = "amba-production-3ab7.up.railway.app"
-SITE_URL = "bessolitsingleb.github.io/AI-ta/site"
 
 # Порядок: номер слайда-примера в шаблоне → наш слайд.
 ORDER = [13, 24, 64, 53, 33, 63, 26, 32, 21, 67, 35, 82]
@@ -349,12 +348,7 @@ def main() -> None:
     for para in shape(s, 9).text_frame.paragraphs:
         for run in para.runs:
             run.font.size = Pt(56)  # было 72: с запасом под широкие шрифты
-    host, path = SITE_URL.split("/", 1)
-    put(s, 10, [host, "/" + path])  # перенос по слэшу, а не посреди «github.io»
-    for para in shape(s, 10).text_frame.paragraphs:
-        for run in para.runs:
-            run.font.size = Pt(28)
-    shape(s, 10).top, shape(s, 10).height = Inches(4.0), Inches(1.1)
+    remove(s, 10)  # без ссылок на слайде: только QR-коды
     put(s, 5, "Приложение")
     put(s, 2, "Сканируйте QR-код")
     put(s, 4, "и откройте Амбу")
