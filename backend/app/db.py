@@ -86,10 +86,20 @@ class Trip(Base):
     user: Mapped[User] = relationship(back_populates="trips")
 
 
+def normalize_url(url: str) -> str:
+    """Хостинги (Render, Heroku) выдают postgres://… — SQLAlchemy с драйвером psycopg 3 ждёт postgresql+psycopg://."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url.removeprefix(prefix)
+    return url
+
+
 def _make_engine(url: str):
+    url = normalize_url(url)
     if url.startswith("sqlite:///"):
         Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
-    eng = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {})
+    eng = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {},
+                        pool_pre_ping=not url.startswith("sqlite"))  # бесплатный Postgres рвёт простаивающие соединения
     if url.startswith("sqlite"):
         @event.listens_for(eng, "connect")
         def _fk(dbapi_conn, _):  # SQLite по умолчанию не соблюдает внешние ключи

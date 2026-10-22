@@ -55,7 +55,9 @@ class Settings:
     jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", ""))
     access_ttl_min: int = field(default_factory=lambda: int(os.getenv("ACCESS_TTL_MIN", "15")))
     refresh_ttl_days: int = field(default_factory=lambda: int(os.getenv("REFRESH_TTL_DAYS", "30")))
-    public_url: str = field(default_factory=lambda: os.getenv("PUBLIC_URL", "http://localhost:8000").rstrip("/"))
+    # Адрес для ссылок в письмах; Render сам отдаёт RENDER_EXTERNAL_URL
+    public_url: str = field(default_factory=lambda: (os.getenv("PUBLIC_URL") or os.getenv("RENDER_EXTERNAL_URL")
+                                                     or "http://localhost:8000").rstrip("/"))
     cookie_secure: bool = field(default_factory=lambda: os.getenv("COOKIE_SECURE", "0") == "1")
     # Почта: Gmail SMTP с паролем приложения. Пустой SMTP_PASSWORD — письма пишутся в лог (режим разработки).
     smtp_host: str = field(default_factory=lambda: os.getenv("SMTP_HOST", "smtp.gmail.com"))

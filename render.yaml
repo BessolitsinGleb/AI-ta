@@ -1,14 +1,59 @@
-# Render Blueprint: New → Blueprint → этот репозиторий. Ключ OPENROUTER_API_KEY Render спросит при создании.
+# Render Blueprint: render.com → New → Blueprint → этот репозиторий.
+# Поднимаются три бесплатных сервиса: приложение (Docker), Postgres для аккаунтов и Key Value (Redis) для лимитов и диалогов.
+# При создании Render спросит секреты, помеченные sync: false: ключ LLM Proxy и почту Gmail.
 services:
   - type: web
     name: amba
     runtime: docker
     plan: free
-    region: singapore
+    region: frankfurt
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
-      - key: OPENROUTER_API_KEY
+      - key: OPENROUTER_API_KEY        # ключ LLM Proxy Т-Образования
         sync: false
+      - key: OPENROUTER_BASE_URL
+        value: https://llm-proxy.spirit.t-education.com/v1
+      - key: MODEL_V1
+        value: openrouter/deepseek/deepseek-v4.1-flash
+      - key: MODEL_V2
+        value: openrouter/deepseek/deepseek-v4.1-flash
+      - key: MODEL_V3
+        value: openrouter/deepseek/deepseek-v4.1-flash
       - key: AGENT_VERSION
         value: v3
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER                 # почта Gmail, с которой уходят письма
+        sync: false
+      - key: SMTP_PASSWORD             # пароль приложения Gmail
+        sync: false
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: FORWARDED_ALLOW_IPS       # реальные адреса клиентов за балансировщиком Render
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: amba-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: amba-redis
+          property: connectionString
+  - type: keyvalue
+    name: amba-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []                    # доступ только изнутри Render
+    maxmemoryPolicy: volatile-ttl
+
+databases:
+  - name: amba-db
+    plan: free
+    region: frankfurt
+    databaseName: amba
