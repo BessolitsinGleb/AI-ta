@@ -141,11 +141,11 @@ async def test_food_skips_places_with_dead_sites(monkeypatch):
                 {"name": "Живое кафе", "lat": "43.1170", "lon": "131.8870", "extratags": {"website": "https://alive.example"}},
                 {"name": "Кафе без следов", "lat": "43.1150", "lon": "131.8850", "extratags": {}}]
 
-    async def status(urls, parallel=6):
-        return {u: u == "https://alive.example" for u in urls}
+    async def status(url, timeout=4.0):
+        return ("open", "сайт работает") if url == "https://alive.example" else ("closed", "домена больше нет")
 
     monkeypatch.setattr(food, "_nominatim_raw", nominatim)
-    monkeypatch.setattr(food, "check_many", status)
+    monkeypatch.setattr(food, "site_status", status)
     full, visible = await run("find_food", {"near_lat": 43.1155, "near_lon": 131.8855}, online())
     names = [p["name"] for p in full["places"]]
     assert "Бар-призрак" not in names and names[0] == "Живое кафе"  # сайт открывается — первым

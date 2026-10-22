@@ -16,7 +16,7 @@ from typing import Any, Awaitable, Callable
 
 from .address import add_addresses
 from .config import TZ, settings
-from .linkcheck import drop_dead_links
+from .linkcheck import CLOSED, OPEN, drop_dead_links, site_status
 from .guardrails import precheck
 from .intents import merge_intents, parse_intents
 from .llm import ChatModel, LLMError, OpenRouterLLM, Usage
@@ -282,6 +282,8 @@ async def run_agent(
                 messages.append({"role": "assistant", "content": text or "…"})
                 messages.append({"role": "user", "content": REPAIR_NUDGE})
                 continue
+            if last_plan is not None:  # модель сдалась после правок — отдаём последний план с честной сверкой
+                return await _finalize(last_plan, last_checks, ctx, finish, emit)
             return finish("text", text=text or "Модель не вернула ответа.")
 
         assistant = {"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls}
@@ -409,12 +411,33 @@ def fill_coords(plan: dict) -> None:
                 it["lat"], it["lon"] = place["lat"], place["lon"]
 
 
+async def mark_status(plan: dict, ctx: ToolContext) -> None:
+    """У каждого заведения и музея — отметка, проверено ли, что оно работает, и как именно."""
+    jobs = []
+    for day in plan.get("days") or []:
+        for it in day.get("items") or []:
+            if it.get("type") not in ("food", "place"):
+                continue
+            url = str(it.get("url") or "")
+            if url.startswith(("http://", "https://")) and not ctx.offline:
+                jobs.append((it, url))
+            elif place := get_place(str(it.get("place_id") or "")):
+                it["status"] = {"state": OPEN, "text": "Открыто в это время — по расписанию из базы мест" if place.get("hours")
+                                else "Под открытым небом — доступно в любое время"}
+            elif it.get("type") == "food":
+                it["status"] = {"state": "unknown", "text": "Сайта нет — проверить не удалось, уточните перед визитом"}
+    states = await asyncio.gather(*(site_status(url) for _, url in jobs))
+    for (it, _), (state, why) in zip(jobs, states, strict=True):
+        text = {OPEN: "Работает — сайт отвечает", CLOSED: f"Похоже, закрыто: {why}"}.get(state, f"Не удалось проверить: {why}")
+        it["status"] = {"state": state, "text": text}
+
+
 async def _finalize(plan: dict, checks: list, ctx: ToolContext, finish, emit: EventCb) -> dict:
     fill_coords(plan)
     attach_links(plan)
-    # маршрут, адреса и проверка ссылок «Сайт» — параллельно; неоткрывающиеся ссылки из плана убираем
-    mp, _, _ = await asyncio.gather(enrich_map(plan, ctx), add_addresses(plan, ctx),
-                                    drop_dead_links(plan) if not ctx.offline else asyncio.sleep(0))
+    # маршрут, адреса, отметки «работает» и ссылки «Сайт» — параллельно (проверки сайтов уже в кэше после find_food)
+    mp, *_ = await asyncio.gather(enrich_map(plan, ctx), add_addresses(plan, ctx), mark_status(plan, ctx),
+                                  drop_dead_links(plan) if not ctx.offline else asyncio.sleep(0))
     for day in plan.get("days") or []:
         fc = day.pop("_forecast", None)
         if fc:

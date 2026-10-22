@@ -1,8 +1,10 @@
 """Где поесть: реальные кафе и рестораны из OpenStreetMap (Nominatim) с кухней, часами и сайтом."""
 from __future__ import annotations
 
+import asyncio
+
 from ..geo import haversine_km
-from ..linkcheck import check_many
+from ..linkcheck import CLOSED, OPEN, site_status
 from ..links import yandex_maps
 from .base import Tool, ToolContext
 from .geocode import _nominatim_raw, gazetteer_lookup
@@ -40,6 +42,7 @@ async def find_food(args: dict, ctx: ToolContext) -> dict:
     cuisine = str(args.get("cuisine") or "")
     wanted = _wanted(cuisine)
     found: dict[str, dict] = {}
+    closed = 0
     if not ctx.offline:
         for radius in (0.02, 0.06):  # сначала рядом, потом шире
             for q in ("ресторан", "кафе"):
@@ -67,22 +70,26 @@ async def find_food(args: dict, ctx: ToolContext) -> dict:
                 break
         if found:
             ctx.sources.add("OpenStreetMap / Nominatim (кафе и рестораны)")
-        # OSM помнит и закрывшиеся заведения: сайт, которого больше нет, — верный признак. Такие не предлагаем.
-        status = await check_many([f["url"] for f in found.values() if f["url"]])
-        closed = [n for n, f in found.items() if f["url"] and status.get(f["url"]) is False]
-        for n in closed:
-            del found[n]
+        # OSM помнит и закрывшиеся заведения. Заходим на сайты ближайших кандидатов (параллельно, с кэшем) и читаем,
+        # что там: нет домена, 404, домен продаётся, «мы закрылись» — такие не предлагаем.
+        top = sorted(found.values(), key=lambda f: (not f["match"], f["km"]))[:10]
+        checked = await asyncio.gather(*(site_status(f["url"]) for f in top if f["url"]))
+        for f, (state, _why) in zip([f for f in top if f["url"]], checked, strict=True):
+            f["site"] = state
+            if state == CLOSED:
+                del found[f["name"]]
+                closed += 1
         for f in found.values():
-            f["site_ok"] = bool(f["url"]) and status.get(f["url"]) is True
-            if not f["site_ok"]:
-                f["url"] = None  # не открылся — ссылку не показываем
-        if closed:
+            f["site_ok"] = f.get("site") == OPEN
+        if any(f["url"] for f in top):
             ctx.sources.add("проверка сайтов заведений")
     # Сначала нужная кухня, потом заведения с признаками жизни (сайт открывается, телефон, часы работы), потом ближние.
     alive = lambda f: f.get("site_ok") or f.get("phone") or f.get("hours")  # noqa: E731
     places = sorted(found.values(), key=lambda f: (not f["match"], not alive(f), f["km"]))[: int(args.get("limit") or 6)]
     search = f"{cuisine or 'кафе'} рестораны".strip()
     res = {"places": places, "search_url": yandex_maps(search, lat, lon, zoom=14)}
+    if closed:
+        res["closed_excluded"] = closed  # столько заведений рядом закрылись — по их же сайтам
     if wanted and not any(p["match"] for p in places):
         res["note"] = f"с кухней «{cuisine}» рядом в OSM не нашлось — показаны ближайшие заведения и ссылка на поиск"
     if not places:
@@ -99,6 +106,8 @@ def _compact(res: dict) -> dict:
             p["unverified"] = True  # ни сайта, ни телефона, ни часов — может уже не работать
     if res.get("note"):
         out["note"] = res["note"]
+    if res.get("closed_excluded"):
+        out["closed_excluded"] = res["closed_excluded"]
     return out
 
 

@@ -5,12 +5,14 @@
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 
 from .geo import haversine_km, in_primorye
 from .intents import Intents
+from .linkcheck import CLOSED, site_status
 from .tools.base import WEEKDAYS_RU, ToolContext, load_data, parse_date, stable_hash
 from .tools.places import get_place, hours_text, is_open
 from .tools.routing import DAILY_LIMIT_KM, ROAD_FACTOR
@@ -45,7 +47,7 @@ def _coords(item: dict) -> tuple[float, float] | None:
 
 MODE_RU = {"car": "машина", "bike": "велосипед", "foot": "пешком", "bus": "автобус", "train": "поезд"}
 # Еда — рядом с тем, что смотрим: от соседней точки дня не дальше (км по дорогам)
-FOOD_NEAR_KM = {"foot": 1.5, "bike": 4.0, "bus": 2.0, "train": 2.0, "car": 8.0}
+FOOD_NEAR_KM = {"foot": 1.5, "bike": 5.0, "bus": 3.0, "train": 3.0, "car": 15.0}
 
 
 def plan_transport(plan: dict, intents: Intents) -> str:
@@ -142,19 +144,26 @@ async def validate_plan(plan: dict, intents: Intents, ctx: ToolContext) -> list[
                                 f"День {i+1}: ~{km:.0f} км {'пешком' if mode == 'foot' else 'на велосипеде'} (предел {limit:.0f})"))
 
     # 4б. Кафе рядом с местами дня, а не в соседнем посёлке.
-    near_km = FOOD_NEAR_KM.get(mode, 8.0)
+    near_km = FOOD_NEAR_KM.get(mode, 15.0)
     far_food, food_seen = [], False
     for d in days:
-        stops = [it for it in d.get("items") or [] if it.get("type") != "transfer"]
+        seq = list(d.get("items") or [])
         lod = d.get("lodging") or {}
         if lod.get("lat") and lod.get("lon"):
-            stops.append({"name": lod.get("name"), "lat": lod["lat"], "lon": lod["lon"], "type": "lodging"})
-        for j, it in enumerate(stops):
+            seq.append({"name": lod.get("name"), "lat": lod["lat"], "lon": lod["lon"], "type": "lodging"})
+        for j, it in enumerate(seq):
             if it.get("type") != "food" or not (c := _coords(it)):
                 continue
             food_seen = True
-            near = [(o, oc) for o in (stops[j - 1] if j else None, stops[j + 1] if j + 1 < len(stops) else None)
-                    if o and (oc := _coords(o))]
+            # Ориентир — место, где человек и так находится (достопримечательность, ночёвка), ближайшее до или после еды.
+            # Через переезд не смотрим: поел по приезде в новый посёлок — сравнивать не с чем. Соседнее кафе — не ориентир.
+            near = []
+            for step in (-1, 1):
+                k = j + step
+                while 0 <= k < len(seq) and seq[k].get("type") in ("food", "note"):
+                    k += step
+                if 0 <= k < len(seq) and seq[k].get("type") in ("place", "lodging") and (oc := _coords(seq[k])):
+                    near.append((seq[k], oc))
             if not near:
                 continue
             other, oc = min(near, key=lambda x: haversine_km(*c, *x[1]))
@@ -164,6 +173,20 @@ async def validate_plan(plan: dict, intents: Intents, ctx: ToolContext) -> list[
     if food_seen:
         checks.append(Check("food_nearby", not far_food, "Кафе рядом с местами дня" if not far_food else
                             f"Еда далеко от маршрута (нужно ближе {near_km:g} км): " + "; ".join(far_food[:3])))
+
+    # 4в. Заведения работают: заходим на их сайты (кэш общий с find_food) и читаем, что там написано.
+    if not ctx.offline:
+        venues = [it for d in days for it in d.get("items") or []
+                  if it.get("type") in ("food", "place") and str(it.get("url") or "").startswith(("http://", "https://"))]
+        states = await asyncio.gather(*(site_status(str(it["url"])) for it in venues))
+        closed_venues = [f"«{it.get('name')}»: {why}" for it, (st, why) in zip(venues, states, strict=True) if st == CLOSED]
+        if venues:
+            checks.append(Check("venues_open", not closed_venues, "Сайты заведений открываются, о закрытии не пишут"
+                                if not closed_venues else "Похоже, закрыто — " + "; ".join(closed_venues[:3])))
+        blind = [str(it.get("name")) for d in days for it in d.get("items") or [] if it.get("type") == "food" and not it.get("url")]
+        if blind:
+            checks.append(Check("venues_unverified", False, "Работу не проверить (у заведения нет сайта), уточните перед визитом: "
+                                + ", ".join(blind[:3]), "warn"))
 
     # 5. Погода — сверяем с прогнозом сами.
     horizon = ctx.today + timedelta(FORECAST_DAYS - 1)

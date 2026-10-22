@@ -83,6 +83,9 @@ const onMap = (it) => Number.isFinite(parseFloat(it?.lat)) && Number.isFinite(pa
 const mapRef = (it, day, item) => (onMap(it) ? ` data-map-day="${day}" data-map-item="${item}" tabindex="0" title="Показать на карте"` : "");
 
 const addrHtml = (a) => (a ? `<span class="addr">${esc(a)}</span>` : "");
+// Проверено ли, что место работает: по сайту, по расписанию из базы или «не удалось»
+const STATUS_MARK = { open: "✓", closed: "✕", unknown: "?" };
+const statusHtml = (s) => (s?.text ? `<span class="status st-${esc(s.state)}">${STATUS_MARK[s.state] || "?"} ${esc(s.text)}</span>` : "");
 
 // АЗС: топливо из тегов OSM — есть / нет / не указано
 const MAIN_FUELS = ["АИ-92", "АИ-95", "ДТ"];
@@ -115,7 +118,7 @@ function fuelHtml(stations = []) {
 function stop(it, day, i) {
   const kind = KIND_RU[it.type];
   return `<li class="stop type-${esc(it.type || "note")}"${mapRef(it, day, i)}><time>${esc(it.time || "")}</time><div>` +
-    `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${addrHtml(it.address)}${it.details ? `<p>${esc(it.details)}</p>` : ""}` +
+    `<b>${esc(it.name)}</b>${kind ? `<span class="stop-kind">${kind}</span>` : ""}${addrHtml(it.address)}${statusHtml(it.status)}${it.details ? `<p>${esc(it.details)}</p>` : ""}` +
     `${linksHtml(it.links)}</div></li>`;
 }
 

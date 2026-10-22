@@ -192,3 +192,18 @@ async def test_food_must_be_near_the_sights():
     good = checks_by_id(await validate_plan({"transport": "foot", "days": [{"date": SAT, "items": [museum, near]}]}, it, c))
     assert good["food_nearby"].ok
 
+
+
+@pytest.mark.asyncio
+async def test_lunch_out_of_town_and_dinner_back_in_city_are_fine():
+    it = parse_intents("первый день во Владивостоке, потом на машине в Хасанский район", WED)
+    day = {"date": SAT, "items": [
+        place("x_vityaz", "Бухта Витязь", 42.6040, 131.1830, "11:00"),
+        {"time": "13:00", "type": "food", "name": "Кафе в Витязе", "lat": 42.6050, "lon": 131.1850},
+        {"time": "15:00", "type": "transfer", "name": "Обратно во Владивосток"},
+        {"time": "19:00", "type": "food", "name": "Ужин во Владивостоке", "lat": 43.1160, "lon": 131.8920},
+    ]}
+    c = ctx()
+    sunny(c, [SAT], lat=42.60, lon=131.18)
+    res = checks_by_id(await validate_plan({"transport": "car", "days": [day]}, it, c))
+    assert res["food_nearby"].ok, res["food_nearby"].text  # 108 км между кафе — это переезд, а не «поесть далеко»

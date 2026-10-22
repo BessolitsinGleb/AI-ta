@@ -42,7 +42,45 @@ async def test_dead_site_links_are_removed_from_plan():
     assert await linkcheck.drop_dead_links(plan) == 1
     alive, gone = plan["days"][0]["items"]
     assert [x["title"] for x in alive["links"]] == ["Сайт", "На карте"] and alive["url"]
-    assert [x["title"] for x in gone["links"]] == ["На карте"] and "url" not in gone
+    assert [x["title"] for x in gone["links"]] == ["На карте"]  # url остаётся — по нему отметка «похоже, закрыто»
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_site_content_tells_if_venue_closed():
+    respx.get("https://live.example/").mock(return_value=httpx.Response(200, text="<h1>Кафе «Маяк»</h1> Пн: закрыто, Вт–Вс 10–22"))
+    respx.get("https://bye.example/").mock(return_value=httpx.Response(200, text="<p>Дорогие гости, мы закрылись. Спасибо!</p>"))
+    respx.get("https://parked.example/").mock(return_value=httpx.Response(200, text="<title>Домен продаётся</title>"))
+    respx.get("https://moved.example/").mock(return_value=httpx.Response(301, headers={"location": "https://bye.example/"}))
+    respx.get("https://sneaky.example/").mock(return_value=httpx.Response(302, headers={"location": "http://127.0.0.1:6379/"}))
+    assert await linkcheck.site_status("https://live.example/") == ("open", "сайт работает")  # «Пн: закрыто» — это часы
+    state, why = await linkcheck.site_status("https://bye.example/")
+    assert state == "closed" and "мы закрылись" in why
+    assert (await linkcheck.site_status("https://parked.example/"))[0] == "closed"
+    assert (await linkcheck.site_status("https://moved.example/"))[0] == "closed"  # переадресация на закрытую страницу
+    assert (await linkcheck.site_status("https://sneaky.example/"))[0] == "unknown"  # во внутреннюю сеть не идём
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_validator_rejects_closed_venue():
+    from datetime import date
+
+    from app.intents import parse_intents
+    from app.tools.base import ToolContext
+    from app.validator import validate_plan
+
+    respx.get("https://bye.example/").mock(return_value=httpx.Response(410))
+    plan = {"transport": "foot", "days": [{"date": "2026-10-24", "items": [
+        {"time": "11:00", "type": "place", "name": "Подлодка С-56", "place_id": "vl_s56", "lat": 43.115, "lon": 131.889},
+        {"time": "13:00", "type": "food", "name": "Бывшее кафе", "lat": 43.116, "lon": 131.890, "url": "https://bye.example/"},
+        {"time": "14:00", "type": "food", "name": "Кафе без сайта", "lat": 43.116, "lon": 131.890}]}]}
+    ctx = ToolContext(today=date(2026, 10, 21), offline=False)
+    ctx.weather["43.12,131.89"] = {"2026-10-24": {"date": "2026-10-24", "summary": "ясно", "tmin": 5, "tmax": 12, "precip_mm": 0,
+                                                  "wind_max_ms": 3, "sunset": "18:15", "risks": []}}
+    checks = {c.id: c for c in await validate_plan(plan, parse_intents("в субботу пешком", date(2026, 10, 21)), ctx)}
+    assert not checks["venues_open"].ok and "Бывшее кафе" in checks["venues_open"].text and checks["venues_open"].severity == "error"
+    assert checks["venues_unverified"].severity == "warn" and "Кафе без сайта" in checks["venues_unverified"].text
 
 
 def test_address_format():

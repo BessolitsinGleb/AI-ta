@@ -136,6 +136,10 @@ textarea:focus { outline: none; }
 #map .pin-label.label-hidden { visibility: hidden; }
 .addr { display: block; margin-top: 2px; font-size: 13px; color: var(--sea-3); }
 .addr::before { content: "⌖ "; }
+.status { display: inline-block; margin-top: 4px; font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+.st-open { background: var(--kelp-soft); color: var(--kelp); }
+.st-closed { background: var(--bad-soft); color: var(--bad); }
+.st-unknown { background: var(--fog); color: var(--sea-3); }
 .fuels { display: flex; flex-wrap: wrap; gap: 4px; margin: 5px 0 3px; }
 .fuel { font: 700 11px var(--font); padding: 1px 6px; border-radius: 5px; }
 .fuel.yes { background: var(--kelp-soft); color: var(--kelp); }
