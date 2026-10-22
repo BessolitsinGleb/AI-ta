@@ -165,7 +165,7 @@ def main() -> None:
     # 2. Проблема и для кого
     s = S[1]
     put(s, 6, "Какую проблему решаем")
-    put(s, 14, "Поездку собирают из десятка сайтов")
+    put(s, 14, "Данные разбросаны")
     put(s, 4, ["Погода, расписания, режим музеев, АЗС, жильё, кафе — всё в разных местах.",
                "Чат-боты строят план, но не проверяют его: ведут в закрытый музей или на велосипед под ливень.",
                "В Приморье цена ошибки выше: сопки, грунтовки, редкие рейсы и паромы."])
@@ -181,9 +181,9 @@ def main() -> None:
     put(s, 3, "Чем отличаемся от существующих решений")
     tbl = shape(s, 5).table
     total = shrink_table(tbl, rows=6, cols=5)
-    rows = [["", "Чат-боты", "Агрегаторы билетов", "Путеводители", "Амба"],
+    rows = [["", "Чат-боты", "Агрегаторы", "Путеводители", "Амба"],
             ["Запрос свободным текстом", "да", "нет", "нет", "да"],
-            ["План целиком: места, путь, ночёвка, еда", "да", "частично", "частично", "да"],
+            ["План целиком: места, путь, ночлег, еда", "да", "частично", "частично", "да"],
             ["Проверка погоды и режима работы", "нет", "нет", "частично", "да"],
             ["Ограничения транспорта: АЗС, рейсы", "нет", "частично", "нет", "да"],
             ["Ссылки, чтобы сразу всё оформить", "нет", "да", "частично", "да"]]
@@ -191,7 +191,7 @@ def main() -> None:
         for c, val in enumerate(row):
             set_text(tbl.cell(r, c).text_frame, val)
     w = total / 914400
-    set_col_widths(tbl, [w * 0.36] + [w * 0.16] * 4)
+    set_col_widths(tbl, [w * 0.37, w * 0.13, w * 0.16, w * 0.19, w * 0.15])
     from pptx.dml.color import RGBColor
     for r in range(6):  # шаблон красит цифры в зелёный/красный — у нас это не значения со знаком
         tbl.rows[r].height = Inches(7.9 / 6)
@@ -279,6 +279,7 @@ def main() -> None:
         put(s, nm, num)
         put(s, tx, txt)
         shape(s, nm).width = Inches(3.9)
+        shape(s, tg).width = Inches(2.6)  # ярлык «Качество»/«Сходятся» не должен переноситься
 
     # 9. Что нашёл эвал
     s = S[8]
@@ -308,33 +309,37 @@ def main() -> None:
         name_box, role_box = list(g.shapes)
         set_text(name_box, name.split(" ", 1) if " " in name and not ai else [name])
         set_text(role_box, role)
+        for box, size in ((name_box, 26), (role_box, 16)):  # с запасом под любой шрифт: длинные фамилии и роли
+            for para in box.text_frame.paragraphs:
+                for run in para.runs:
+                    run.font.size = Pt(size)
         img = ASSETS / f"avatar_{ini}.png"
         avatar(img, ini, ai)
         shape(s, ph).insert_picture(str(img))
 
-    # 11. Как повторить + QR демо
+    # 11. Код на GitHub + демо: две одинаковые QR-плашки
     s = S[10]
-    put(s, 9, ["Как", "повторить"])
+    put(s, 9, ["Код", "на GitHub"])
     put(s, 10, REPO_URL)
-    box = s.shapes.add_textbox(Inches(8.3), Inches(4.1), Inches(5.4), Inches(5.6))
-    tf = box.text_frame
-    tf.word_wrap = True
-    lines = ["make install", "cp .env.example .env", "make dev", "make test", "make eval", "railway up"]
-    for i, line in enumerate(lines):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.text = line
-        p.space_after = Pt(10)
-        f = p.runs[0].font
-        f.name, f.size = "Courier New", Pt(22)
+    shape(s, 10).top, shape(s, 10).height = Inches(4.0), Inches(1.0)
     put(s, 5, "Демо")
     put(s, 2, "Сканируйте QR-код")
     put(s, 4, "и попробуйте Амбу")
     shape(s, 2).width = shape(s, 4).width = Inches(4.6)
     put(s, 15, "11")  # в этом примере номер слайда — обычный текст
-    qr_box = shape(s, 16)
-    set_text(qr_box, " ")
-    picture(s, ASSETS / "qr_demo.png", qr_box.left / 914400 + 0.45, qr_box.top / 914400 + 0.45,
-            w=qr_box.width / 914400 - 0.9)
+    plate = shape(s, 16)
+    set_text(plate, " ")
+    twin = copy.deepcopy(plate._element)  # такая же фирменная плашка под QR, но в белой карточке
+    twin_id = max(int(e.get("id")) for e in s.shapes._spTree.iter() if e.tag.endswith("}cNvPr")) + 1
+    twin.find(".//{http://schemas.openxmlformats.org/presentationml/2006/main}cNvPr").set("id", str(twin_id))
+    twin.find(f".//{A}off").set("x", str(int(Inches(8.3))))
+    plate._element.addnext(twin)
+    twin_shape = shape(s, twin_id)
+    twin_shape.fill.solid()
+    from pptx.dml.color import RGBColor
+    twin_shape.fill.fore_color.rgb = RGBColor(0xEF, 0xF0, 0xF1)
+    for qr_png, left in ((ASSETS / "qr_repo.png", 8.3), (ASSETS / "qr_demo.png", plate.left / 914400)):
+        picture(s, qr_png, left + 0.45, plate.top / 914400 + 0.45, w=plate.width / 914400 - 0.9)
 
     # 12. Финал
     s = S[11]
@@ -348,6 +353,39 @@ def main() -> None:
 
     prs.save(str(OUT))
     print("saved", OUT, "slides:", len(prs.slides))
+    export_pdf(OUT)
+
+
+PDF_FONTS = {b"T-Sans Medium": b"PT Sans Caption", b"TINKOFFSANS-MEDIUM": b"PT Sans Caption", b"T-Sans": b"PT Sans", b"Tinkoff Sans": b"PT Sans"}
+
+
+def export_pdf(pptx: Path) -> Path:
+    """PDF с зашитым шрифтом: фирменный T-Sans не у всех установлен, в PDF подставляем PT Sans — он есть в macOS и открыт (OFL)."""
+    import shutil
+    import tempfile
+    import zipfile
+
+    work = Path(tempfile.mkdtemp())
+    tmp = work / pptx.name
+    with zipfile.ZipFile(pptx) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename.endswith(".xml"):
+                for old, new in PDF_FONTS.items():
+                    data = data.replace(b'typeface="' + old + b'"', b'typeface="' + new + b'"')
+            zout.writestr(item, data)
+    profile = work / "lo"
+    (profile / "user" / "fonts").mkdir(parents=True)
+    pt_sans = Path("/System/Library/Fonts/Supplemental/PTSans.ttc")
+    if pt_sans.exists():
+        shutil.copy(pt_sans, profile / "user" / "fonts")  # LibreOffice видит только свои шрифты и шрифты профиля
+    soffice = shutil.which("soffice") or "/Applications/LibreOffice.app/Contents/MacOS/soffice"
+    subprocess.run([soffice, f"-env:UserInstallation=file://{profile}", "--headless", "--convert-to", "pdf", "--outdir", str(work), str(tmp)],
+                   check=True, capture_output=True, timeout=600)
+    out = pptx.with_suffix(".pdf")
+    shutil.copy(work / pptx.with_suffix(".pdf").name, out)
+    print("saved", out)
+    return out
 
 
 if __name__ == "__main__":
