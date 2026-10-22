@@ -43,8 +43,9 @@ if command -v node >/dev/null && [ -d presentation/node_modules/qrcode ]; then
   echo "QR для экрана: data/lan-qr.png"
   [ "${NO_OPEN:-0}" = 1 ] || open data/lan-qr.png 2>/dev/null || true
 fi
-# Ссылки и QR «Приложение» — на этот же адрес: сайт команды, визитка, презентация (PDF ~полминуты)
-if [ "${SKIP_DECK:-0}" != 1 ] && [ -x .venv/bin/python ]; then
+# Ссылки и QR «Приложение» на сайте, визитке и в презентации ведут на облако (Render). Перевести их на ноутбук —
+# только по явной просьбе: APP_URL_FROM_LAN=1 make lan
+if [ "${APP_URL_FROM_LAN:-0}" = 1 ] && [ -x .venv/bin/python ]; then
   if .venv/bin/python scripts/set_app_url.py "$URL" >/dev/null; then
     echo "Сайт, визитка и презентация ведут на $URL"
     git diff --quiet -- docs/site 2>/dev/null || echo "Сайт команды на GitHub Pages обновится после: make publish-site"

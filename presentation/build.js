@@ -1,4 +1,4 @@
-// Сборка презентации: node build.js → Amba_Travel_AI.pptx + ../docs/SPEECH.md (текст выступления с таймингом).
+// Старая колода (до шаблона Т-Банка): node build.js → Amba_Travel_AI.pptx + Amba_Travel_AI.speech.md. Актуальная — build_tbank.py.
 // Регламент: 8 минут на рассказ. Слайдов 12, суммарно ~7:35 — запас на переходы.
 // Метрики берутся из ../eval/results (реальный прогон).
 const fs = require("fs");
@@ -10,7 +10,7 @@ const QRCode = require("qrcode");
 const ROOT = path.resolve(__dirname, "..");
 const IMG = path.join(ROOT, "docs", "img");
 const OUT = path.join(__dirname, "Amba_Travel_AI.pptx");
-const DEMO_URL = "https://amba-production-3ab7.up.railway.app";
+const DEMO_URL = "https://amba-qm59.onrender.com";
 // Финальный QR — пасхалка: прямой mp4 из Internet Archive, открывается во встроенном плеере телефона, без рекламы.
 const FINAL_QR_URL = "https://archive.org/download/Rick_Astley_Never_Gonna_Give_You_Up/Rick_Astley_Never_Gonna_Give_You_Up.mp4";
 const REPO_URL = "github.com/BessolitsinGleb/AI-ta";
@@ -370,7 +370,7 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     "| # | Слайд | Время | Конец слайда |", "|---|---|---|---|",
     ...SPEECH.map((x) => { acc += x.sec; return `| ${x.n} | ${x.title} | ${fmt(x.sec)} | ${fmt(acc)} |`; }), "",
     ...SPEECH.map((x) => `## ${x.n}. ${x.title} — ${fmt(x.sec)}\n\n${x.text}\n`)].join("\n");
-  fs.writeFileSync(path.join(ROOT, "docs", "SPEECH.md"), md);
+  fs.writeFileSync(path.join(__dirname, "Amba_Travel_AI.speech.md"), md);  // старая колода; актуальный текст — docs/SPEECH.md (build_tbank.py)
   console.log("saved", OUT, `слайдов: ${SPEECH.length}, хронометраж ${fmt(total)}`);
   SPEECH.forEach((x) => console.log(`  ${x.n}. ${x.title}: ${fmt(x.sec)}, слов ${x.text.split(/\s+/).length} (${Math.round(x.text.split(/\s+/).length / x.sec * 60)} сл/мин)`));
 })();

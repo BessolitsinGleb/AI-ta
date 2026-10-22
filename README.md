@@ -3,7 +3,7 @@
 <h3 align="center">Пишете поездку обычными словами — агент собирает план и проверяет, что он сходится с реальностью</h3>
 
 <p align="center">
-  <a href="https://amba-production-3ab7.up.railway.app"><img src="https://img.shields.io/badge/приложение-онлайн-F0641E?style=for-the-badge" alt="Приложение"></a>
+  <a href="https://amba-qm59.onrender.com"><img src="https://img.shields.io/badge/приложение-онлайн-F0641E?style=for-the-badge" alt="Приложение"></a>
   <a href="https://bessolitsingleb.github.io/AI-ta/site/"><img src="https://img.shields.io/badge/сайт-команды-FFDD2D?style=for-the-badge" alt="Сайт команды"></a>
   <img src="https://img.shields.io/badge/Python-3.12-0F2D3A?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
@@ -225,8 +225,10 @@ make eval       # замеры трёх версий → eval/results
 <details>
 <summary><b>Деплой</b></summary>
 
+- **Render** (рабочий адрес — https://amba-qm59.onrender.com): New → Blueprint → этот репозиторий. `render.yaml` поднимает
+  приложение, Postgres для аккаунтов и Key Value (Redis); секреты Render спросит сам. Бесплатный Render закрывает
+  исходящую почту, поэтому там регистрация входит сразу, без письма (`EMAIL_VERIFY`).
 - **Railway:** `railway up` — сборка по `Dockerfile` и `railway.json`.
-- **Render:** New → Blueprint → этот репозиторий, настройки в `render.yaml`.
 - **Своя VM:** `./deploy/deploy.sh user@IP` — Docker на сервере, `http://IP:8000`.
 </details>
 

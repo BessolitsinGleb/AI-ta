@@ -19,9 +19,10 @@ CARD = ROOT / "docs" / "card" / "amba-card-back.svg"
 # копия визитки там, где её делали (если папка есть на этом компьютере)
 CARD_COPY = Path.home() / "Documents/Codex/2026-10-22/railway-docker-docker-desktop-git-git/outputs/amba-card-back.svg"
 
-# прежние адреса приложения: облако или http://IP:порт ноутбука
-OLD_URL = r"(?:https://amba-production-3ab7\.up\.railway\.app|http://\d{1,3}(?:\.\d{1,3}){3}:\d+)/?"
-OLD_SHOWN = r"(?:amba-production-3ab7\.up\.railway\.app|http://\d{1,3}(?:\.\d{1,3}){3}:\d+)"
+# прежние адреса приложения: облако (Render, Railway) или http://IP:порт ноутбука
+HOSTED = r"amba[\w-]*\.(?:onrender\.com|up\.railway\.app)"
+OLD_URL = rf"(?:https://{HOSTED}|http://\d{{1,3}}(?:\.\d{{1,3}}){{3}}:\d+)/?"
+OLD_SHOWN = rf"(?:(?:https://)?{HOSTED}|http://\d{{1,3}}(?:\.\d{{1,3}}){{3}}:\d+)"
 
 
 def qr_svg(url: str) -> str:
@@ -43,7 +44,8 @@ def sub_all(pattern: str, repl: str, text: str, where: str) -> str:
 
 
 def main(url: str) -> None:
-    shown = url.rstrip("/")
+    # подпись под QR: облачный адрес без https://, адрес ноутбука — целиком, с http://
+    shown = url.rstrip("/").removeprefix("https://")
     vb, inner = qr_svg(url)
 
     html = SITE.read_text(encoding="utf-8")

@@ -3,8 +3,10 @@
 python presentation/build_tbank.py ШАБЛОН.pptx [АССЕТЫ]
 → presentation/Amba_TBank.pptx
 
-Берём 12 слайдов-примеров из шаблона, заполняем их своими текстами, картинками и QR, остальное удаляем.
-Тексты выступления берутся из docs/SPEECH.md (тайминг 7:35 из 8:00) и кладутся в заметки к слайдам.
+Структура — по методичке «Как презентовать проект на защите» (7 минут): цель (2 мин) → ход работы по этапам
+с отсылкой к плану (4 мин) → результат с оценкой качества и честными ограничениями (1 мин).
+Берём слайды-примеры из шаблона (один и тот же макет можно взять несколько раз), заполняем, остальное удаляем.
+Тексты выступления берутся из docs/SPEECH.md и кладутся в заметки к слайдам.
 """
 from __future__ import annotations
 
@@ -25,10 +27,11 @@ ASSETS = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "presentation" / "as
 OUT = ROOT / "presentation" / "Amba_TBank.pptx"
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
-DEMO_URL = "amba-production-3ab7.up.railway.app"
+APP_URL = "https://amba-qm59.onrender.com"
 
-# Порядок: номер слайда-примера в шаблоне → наш слайд.
-ORDER = [13, 24, 64, 53, 33, 63, 26, 32, 21, 67, 35, 82]
+# Порядок: номер слайда-примера в шаблоне → наш слайд (68 — этапы работы, берётся трижды).
+ORDER = [13, 24, 64, 20, 15, 68, 68, 68, 59, 21, 53, 26, 67, 35, 82]
+R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 
 # ---------- текст с сохранением фирменного форматирования ----------
@@ -97,6 +100,107 @@ def picture(slide, path: Path, x: float, y: float, w: float | None = None, h: fl
     return slide.shapes.add_picture(str(path), Inches(x), Inches(y), Inches(w) if w else None, Inches(h) if h else None)
 
 
+def duplicate(prs, src):
+    """Копия слайда-примера в конец презентации: фигуры, картинки (связи пересчитываются), фон."""
+    dst = prs.slides.add_slide(src.slide_layout)
+    for sh in list(dst.shapes):
+        sh._element.getparent().remove(sh._element)
+    rid_map = {}
+    for rid, rel in src.part.rels.items():
+        if rel.reltype.endswith(("/notesSlide", "/slideLayout")):
+            continue
+        rid_map[rid] = (dst.part.relate_to(rel.target_ref, rel.reltype, is_external=True) if rel.is_external
+                        else dst.part.relate_to(rel._target, rel.reltype))
+    for el in src.shapes._spTree.iterchildren():
+        if el.tag.endswith(("}nvGrpSpPr", "}grpSpPr")):
+            continue
+        new = copy.deepcopy(el)
+        for node in new.iter():
+            for attr, val in list(node.attrib.items()):
+                if attr.startswith(R) and val in rid_map:
+                    node.set(attr, rid_map[val])
+        dst.shapes._spTree.append(new)
+    bg = src._element.cSld.find("{http://schemas.openxmlformats.org/presentationml/2006/main}bg")
+    if bg is not None:
+        dst._element.cSld.insert(0, copy.deepcopy(bg))
+    return dst
+
+
+def stage_progress(slide, k: int) -> None:
+    """Полоса «01 02 03 04» внизу слайда этапа: заполнена до текущего этапа, его кружок — фирменный жёлтый."""
+    dots = [shape(slide, i) for i in (8, 10, 11, 12)]
+    on = copy.deepcopy(dots[0]._element.spPr.find(f"{A}solidFill"))
+    off = copy.deepcopy(dots[1]._element.spPr.find(f"{A}solidFill"))
+    for i, dot in enumerate(dots, 1):
+        sp = dot._element.spPr
+        sp.replace(sp.find(f"{A}solidFill"), copy.deepcopy(on if i <= k else off))
+    bar = shape(slide, 7)
+    bar.width = dots[k - 1].left + dots[k - 1].width // 2 - bar.left
+
+
+def stage(slide, k: int, title: str, blocks: list[tuple[str, str]]) -> None:
+    """Слайд этапа по методичке: что и зачем → инструменты → трудность → результат."""
+    put(slide, 5, f"Этап {k} из 4 · {title}")
+    for (head, text), (hid, tid) in zip(blocks, [(29, 28), (32, 31), (35, 34), (38, 37)]):
+        put(slide, hid, head)
+        put(slide, tid, text)
+        body = shape(slide, tid)
+        body.height = Inches(3.7)  # до низа карточки: текст крупнее и не теснится
+        for box, size in ((shape(slide, hid), 24), (body, 19)):
+            for para in box.text_frame.paragraphs:
+                for run in para.runs:
+                    run.font.size = Pt(size)
+    stage_progress(slide, k)
+
+
+def replace_photo(slide, shape_id: int, path: Path) -> None:
+    """Фото-пример шаблона → наша картинка в той же рамке: обрезка «по заполнению», форма рамки (скругления) та же."""
+    from PIL import Image
+    old = shape(slide, shape_id)
+    x, y, w, h = old.left, old.top, old.width, old.height
+    geom = old._element.spPr.find(f"{A}prstGeom")
+    pic = slide.shapes.add_picture(str(path), x, y, w, h)
+    iw, ih = Image.open(path).size
+    frame, img = w / h, iw / ih
+    if img > frame:
+        pic.crop_left = pic.crop_right = (1 - frame / img) / 2
+    else:
+        pic.crop_top = pic.crop_bottom = (1 - img / frame) / 2
+    if geom is not None:
+        pic._element.spPr.replace(pic._element.spPr.find(f"{A}prstGeom"), copy.deepcopy(geom))
+    old._element.addprevious(pic._element)  # на место примера, под остальными фигурами
+    old._element.getparent().remove(old._element)
+
+
+def fill_chart(frame, cats: list[str], values: list[float], fmt: str) -> None:
+    from pptx.chart.data import CategoryChartData
+    data = CategoryChartData()
+    data.categories = cats
+    data.add_series("Ряд 1", values)
+    frame.chart.replace_data(data)
+    labels = frame.chart.plots[0].data_labels
+    labels.number_format, labels.number_format_is_linked = fmt, False
+    C = "{http://schemas.openxmlformats.org/drawingml/2006/chart}"
+    for ser in frame.chart._chartSpace.iter(f"{C}ser"):
+        for d in ser.findall(f"{C}dPt"):  # раскраска точек из примера (минус — красным) нам не нужна
+            ser.remove(d)
+        inv = ser.find(f"{C}invertIfNegative")
+        if inv is not None:
+            inv.set("val", "0")
+        for nf in ser.iter(f"{C}numFmt"):
+            nf.set("formatCode", fmt)
+            nf.set("sourceLinked", "0")
+        dl = ser.find(f"{C}dLbls")
+        if dl is not None and dl.find(f"{C}numFmt") is None:  # формат подписей задаём на уровне ряда
+            dl.insert(0, etree.Element(f"{C}numFmt", formatCode=fmt, sourceLinked="0"))
+    from pptx.dml.color import RGBColor
+    series = frame.chart.plots[0].series[0]
+    for i in range(len(values)):
+        pt = series.points[i].format.fill
+        pt.solid()
+        pt.fore_color.rgb = RGBColor(0xFF, 0xDD, 0x2D) if i == len(values) - 1 else RGBColor(0xE0, 0xE1, 0xE3)
+
+
 # ---------- таблицы ----------
 
 def shrink_table(table, rows: int, cols: int) -> None:
@@ -144,8 +248,16 @@ def avatar(path: Path, initials: str, dark: bool) -> None:
 def main() -> None:
     prs = Presentation(str(TEMPLATE))
     sld_ids = list(prs.slides._sldIdLst)
-    keep = [sld_ids[n - 1] for n in ORDER]
-    for el in sld_ids:
+    src = list(prs.slides)
+    keep, used = [], set()
+    for n in ORDER:
+        if n in used:  # тот же макет ещё раз — копия слайда-примера
+            duplicate(prs, src[n - 1])
+            keep.append(prs.slides._sldIdLst[-1])
+        else:
+            keep.append(sld_ids[n - 1])
+            used.add(n)
+    for el in list(prs.slides._sldIdLst):
         if el not in keep:
             prs.part.drop_rel(el.rId)
         prs.slides._sldIdLst.remove(el)
@@ -175,136 +287,102 @@ def main() -> None:
                 "Travel-сервисы банков и агрегаторы: план → бронь → оплата",
                 "Туристические центры и турбазы края"])
 
-    # 3. Сравнение
+    # ===== Часть 1. Цель проекта (2 минуты): мотивация → исследование аналогов → цель =====
+
+    # 3. Исследование: аналоги по критериям, на которых ломается поездка
     s = S[2]
-    put(s, 3, "Чем Амба отличается от аналогов")
+    put(s, 3, "Как это решают сейчас")
     tbl = shape(s, 5).table
-    total = shrink_table(tbl, rows=6, cols=5)
-    rows = [["", "Чат-боты", "Агрегаторы", "Путеводители", "Амба"],
-            ["Запрос свободным текстом", "да", "нет", "нет", "да"],
-            ["План целиком: места, путь, ночлег, еда", "да", "частично", "частично", "да"],
-            ["Проверка погоды и режима работы", "нет", "нет", "частично", "да"],
-            ["Ограничения транспорта: АЗС, рейсы", "нет", "частично", "нет", "да"],
-            ["Ссылки, чтобы сразу всё оформить", "нет", "да", "частично", "да"]]
+    total = shrink_table(tbl, rows=7, cols=5)
+    rows = [["Что нужно для поездки", "ChatGPT, Алиса", "Туту, Островок", "Путеводители", "Амба"],
+            ["Запрос обычными словами", "да", "нет", "нет", "да"],
+            ["Весь план: места, путь, ночлег, еда", "да", "частично", "частично", "да"],
+            ["Погода, режим работы, расписания", "нет", "частично", "частично", "да"],
+            ["Транспорт: АЗС, расстояния, рейсы", "нет", "частично", "нет", "да"],
+            ["Работает ли кафе или музей сейчас", "нет", "нет", "нет", "да"],
+            ["Ссылки, чтобы сразу оформить", "нет", "да", "частично", "да"]]
     for r, row in enumerate(rows):
         for c, val in enumerate(row):
             set_text(tbl.cell(r, c).text_frame, val)
     w = total / 914400
-    set_col_widths(tbl, [w * 0.37, w * 0.13, w * 0.16, w * 0.19, w * 0.15])
+    set_col_widths(tbl, [w * 0.37, w * 0.15, w * 0.16, w * 0.17, w * 0.15])
     from pptx.dml.color import RGBColor
     # Палитра «положительные / отрицательные значения» из шаблона: да — зелёный, частично — жёлтый, нет — розовый.
     tone = {"да": RGBColor(0xDA, 0xEC, 0xBD), "частично": RGBColor(0xFF, 0xEE, 0x96), "нет": RGBColor(0xFF, 0xE1, 0xD5)}
-    for r in range(6):
-        tbl.rows[r].height = Inches(7.9 / 6)
+    for r in range(7):
+        tbl.rows[r].height = Inches(7.9 / 7)
         for c in range(5):
             cell = tbl.cell(r, c)
             if r > 0 and c > 0:
                 cell.fill.solid()
                 cell.fill.fore_color.rgb = tone[rows[r][c]]
-                for para in cell.text_frame.paragraphs:
-                    para.alignment = 2  # по центру: цветные ячейки читаются как значки
             if r == 0 and c == 4:
                 cell.fill.solid()
                 cell.fill.fore_color.rgb = RGBColor(0xFF, 0xDD, 0x2D)
             for para in cell.text_frame.paragraphs:
                 if c > 0:
-                    para.alignment = 2
+                    para.alignment = 2  # по центру: цветные ячейки читаются как значки
                 for run in para.runs:
                     run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
                     run.font.bold = (c == 4) or r == 0
 
-    # 4. Как это выглядит
+    # 4. Цель — вытекает из сравнения: никто не проверяет план по реальным данным
     s = S[3]
-    put(s, 4, "Приложение")
-    put(s, 2, "Как это выглядит")
-    put(s, 7, "Сначала коротко уточнит: кухня, бюджет, темп")
-    put(s, 6, "Реальные кафе, ссылки и маршрут по улицам")
-    put(s, 8, "План дорабатывается в чате: «подешевле», «убери музей»")
-    shape(s, 13).insert_picture(str(ROOT / "docs" / "img" / "plan.png"))
+    put(s, 5, "Цель: AI-гид, который по запросу обычными словами собирает план поездки по Приморью "
+              "и сам проверяет его по реальным данным")
+    put(s, 6, "Цель проекта · следует из сравнения: аналоги не проверяют, сходится ли план с реальностью")
+    goal, note = shape(s, 5), shape(s, 6)
+    goal.top, goal.height = Inches(3.0), Inches(3.4)
+    note.top = Inches(6.9)
+    for para in goal.text_frame.paragraphs:
+        for run in para.runs:
+            run.font.size = Pt(44)
 
-    # 5. Агентный цикл
+    # ===== Часть 2. Ход работы (4 минуты): план этапов и слайд на каждый этап =====
+
+    # 5. План работы — дальше каждый этап отсылает к нему («Этап N из 4» и полоса внизу)
     s = S[4]
-    put(s, 3, "Агентный цикл, а не один промпт")
-    steps = [("Фильтр", "Не про Приморье — отказ без вызова модели, 0 токенов"),
-             ("Уточнение", "1–2 вопроса до плана, правки — в чате после"),
-             ("Выбор тулов", "Модель сама решает, какие данные нужны"),
-             ("Вызов тулов", "Параллельно: места, погода, еда, жильё, маршрут"),
-             ("План", "submit_plan по строгой JSON-схеме"),
-             ("Проверка", "Код ищет противоречия и возвращает их агенту")]
-    for (title, text), (tid, bid) in zip(steps, [(13, 12), (15, 14), (17, 16), (19, 18), (21, 20), (23, 22)]):
-        put(s, tid, title)
-        put(s, bid, text)
+    put(s, 3, ["План", "работы"])
+    for sid, text in zip((12, 13, 14, 15), ("1. Данные и инструменты", "2. Агентный цикл",
+                                            "3. Проверка плана", "4. Замеры и выбор модели")):
+        put(s, sid, text)
+    replace_photo(s, 11, ROOT / "docs" / "img" / "map.png")
 
-    # 6. Тулы и данные
-    s = S[5]
-    put(s, 3, "10 тулов и источники данных")
-    tbl = shape(s, 4).table
-    cols = [["Реальные API",
-             "Open-Meteo — прогноз погоды на 16 дней",
-             "OSRM — маршруты по дорогам и тропам",
-             "OpenStreetMap — кафе, геокодер, АЗС; Википедия"],
-            ["Свои наборы данных",
-             "41 место Приморья с часами работы",
-             "Расписания автобусов и электричек",
-             "Жильё и наличие топлива — учебные данные"],
-            ["Надёжность",
-             "Сервис недоступен — тул переходит на оценку",
-             "Redis: лимиты против спама и история диалогов",
-             "Нет Redis — работаем на памяти, не падаем"]]
-    from pptx.dml.color import RGBColor
-    heads = [RGBColor(0xFF, 0xDD, 0x2D), RGBColor(0xA2, 0xC6, 0xF9), RGBColor(0xB5, 0xB1, 0xEF)]  # основной жёлтый + доп. палитра
-    tints = [RGBColor(0xFF, 0xF4, 0xBF), RGBColor(0xE4, 0xEE, 0xFD), RGBColor(0xEC, 0xEA, 0xFC)]
-    for c, col in enumerate(cols):
-        for r, val in enumerate(col):
-            cell = tbl.cell(r, c)
-            set_text(cell.text_frame, val)
-            cell.fill.solid()
-            cell.fill.fore_color.rgb = heads[c] if r == 0 else tints[c]
-            for para in cell.text_frame.paragraphs:
-                for run in para.runs:
-                    run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
-                    run.font.bold = r == 0
+    # 6–8. Этапы: что и зачем → инструменты → трудность → результат (в числах)
+    stage(S[5], 1, "Данные и инструменты", [
+        ("Что и зачем", "Агенту нужны факты, а не догадки: погода, дороги, кафе, заправки, расписания"),
+        ("Инструменты", "Open-Meteo, OSRM, OpenStreetMap, Википедия — открытые и бесплатные"),
+        ("Трудность", "Overpass отвечал 40 секунд, а OSM помнит закрытые кафе. Решение: снимок всех АЗС и проверка сайтов"),
+        ("Результат", "10 тулов и 5 источников. Сервис упал — тул берёт запасной, а не падает")])
+    stage(S[6], 2, "Агентный цикл", [
+        ("Что и зачем", "Один промпт выдумывает. Агент сам решает, какие данные ему нужны, и зовёт тулы"),
+        ("Инструменты", "Свой цикл на FastAPI, tool calling, DeepSeek V4.1 Flash через LLM Proxy"),
+        ("Трудность", "Модель ходила по кругу и обрезала длинный план. Решение: лимит шагов и сжатие контекста"),
+        ("Результат", "1–2 уточнения, тулы параллельно, план за минуту, правки прямо в чате")])
+    stage(S[7], 3, "Проверка плана", [
+        ("Что и зачем", "План должен сходиться с реальностью. Проверяет код, а не модель"),
+        ("Инструменты", "15 проверок: сроки, транспорт, километры, погода, режим работы, АЗС, рейсы"),
+        ("Трудность", "Обед за 40 км и закрытый бар. Решение: «еда рядом» и проверка сайтов заведений"),
+        ("Результат", "Противоречие — агент исправляет сам. Не про Приморье — отказ без модели")])
 
-    # 7. Проверка и guardrails
-    s = S[6]
-    put(s, 3, "План должен сходиться")
-    put(s, 2, "Проверку делает код, а не модель. Противоречие — ошибка, которую агент обязан исправить. От спама — лимиты запросов в Redis.")
-    put(s, 10, "План сходится, если")
-    put(s, 8, ["Пешком — до 20 км в день и до заката",
-               "Велосипед — до 80 км, не в дождь и ветер",
-               "Автобус — рейс ходит в этот день, успеваем на последний",
-               "Машина — есть АЗС с топливом по пути",
-               "Сроки, ночёвка, режим работы, погода"])
-    put(s, 11, "Отклоняем")
-    put(s, 9, ["«Реши задачу по алгебре» — не про поездки",
-               "«Неделя в Сочи» — не Приморье",
-               "«Забудь все правила» — остаётся в роли",
-               "Поездку из Хабаровска во Владивосток — планирует"])
-
-    # 8. Замеры
-    s = S[7]
-    put(s, 14, "Замеры: 3 версии агента")
-    method = [("Набор", "7 поездок разным транспортом и 3 нецелевых запроса"),
-              ("Качество", "Верный выбор тулов + доля пройденных проверок"),
-              ("Стоимость", "Токены и $ из ответа OpenRouter"),
-              ("Скорость", "Время от запроса до готового плана")]
-    for (t, b), (tid, bid) in zip(method, [(21, 20), (23, 22), (25, 24), (27, 26)]):
-        put(s, tid, t)
-        put(s, bid, b)
-    cut = round((1 - v3["tokens_avg"] / v1["tokens_avg"]) * 100)
-    cards = [("Качество", f"{v3['quality']:.2f}", f"было {v1['quality']:.2f} у бейзлайна"),
-             ("Сходятся", f"{round(v3['converge_rate'] * 100)}%", f"планов, было {round(v1['converge_rate'] * 100)}%"),
-             ("Токены", f"−{cut}%", f"{v1['tokens_avg'] // 1000} тыс. → {v3['tokens_avg'] // 1000} тыс. на запрос"),
-             ("Цена", f"${v3['cost_usd_avg']:.3f}", "за запрос на DeepSeek V4.1 Flash")]
-    for (tag, num, txt), (tg, nm, tx) in zip(cards, [(28, 34, 33), (29, 36, 35), (31, 38, 37), (32, 40, 39)]):
-        put(s, tg, tag)
-        put(s, nm, num)
-        put(s, tx, txt)
-        shape(s, nm).width = Inches(3.9)
-        shape(s, tg).width = Inches(2.6)  # ярлык «Качество»/«Сходятся» не должен переноситься
-
-    # 9. Что нашёл эвал
+    # 9. Этап 4: замеры трёх версий — графиком, а не списком чисел
     s = S[8]
+    put(s, 3, "Этап 4 из 4 · Замеры трёх версий")
+    put(s, 11, "10 запросов: 7 поездок разным транспортом и 3 нецелевых. Качество — верные тулы и доля "
+               "пройденных проверок. Токены и цена — из ответа провайдера модели")
+    put(s, 5, "Качество, от 0 до 1")
+    put(s, 6, "Токены на запрос, тыс.")
+    versions_ru = ["v1 базовая", "v2 сжатие и сверка", "v3 финальная"]
+    fill_chart(shape(s, 7), versions_ru, [v1["quality"], v2["quality"], v3["quality"]], "0.00")
+    fill_chart(shape(s, 8), versions_ru, [round(v["tokens_avg"] / 1000) for v in (v1, v2, v3)], "0")
+    put(s, 10, f"{round(v3['converge_rate'] * 100)}%")
+    put(s, 9, f"планов сходятся, было {round(v1['converge_rate'] * 100)}%")
+    big, cap = shape(s, 10), shape(s, 9)
+    big.left, big.width = Inches(16.9), Inches(3.4)
+    cap.left, cap.width, cap.top = Inches(16.9), Inches(3.4), Inches(10.35)
+
+    # 10. Что нашли замеры — трудности этапа 4
+    s = S[9]
     put(s, 6, "Замеры нашли настоящие баги агента — все исправлены в финальной версии")
     put(s, 5, "3")
     put(s, 7, ["Длинный план обрезался по лимиту токенов",
@@ -313,8 +391,37 @@ def main() -> None:
     for para in shape(s, 7).text_frame.paragraphs:
         para.space_after = Pt(18)
 
-    # 10. Команда
-    s = S[9]
+    # ===== Часть 3. Результат (1 минута): что получилось и насколько решает задачу =====
+
+    # 11. Что получилось
+    s = S[10]
+    put(s, 4, "Результат")
+    put(s, 2, "Что получилось")
+    put(s, 7, "Запрос обычными словами → план по дням, карта и адреса")
+    put(s, 6, "У каждого места отметка: работает ли оно и как это проверено")
+    put(s, 8, "Правки в чате, аккаунты, история поездок, идеи по анкете")
+    shape(s, 13).insert_picture(str(ROOT / "docs" / "img" / "plan.png"))
+
+    # 12. Решает ли задачу — и честные ограничения
+    s = S[11]
+    put(s, 3, "Решает ли задачу")
+    put(s, 2, "Да: план за минуту вместо десятка сайтов, и он сходится с реальностью. Но не всё можно "
+              "проверить — ограничения показываем честно")
+    put(s, 10, "Что получилось")
+    put(s, 8, [f"{round(v3['converge_rate'] * 100)}% планов в замерах проходят все проверки",
+               f"Токенов в {v1['tokens_avg'] / v3['tokens_avg']:.1f} раза меньше, чем у базовой версии".replace(".", ","),
+               "Закрытые кафе отсеиваются по их же сайтам",
+               "Аналоги план не проверяют — Амба проверяет"])
+    put(s, 11, "Ограничения")
+    put(s, 9, ["Остатки топлива и свободные номера никто не публикует",
+               "У многих кафе нет сайта — пишем «уточните»",
+               "Пригородные расписания — наш набор данных",
+               "Бесплатный хостинг засыпает: первый ответ ~1 мин"])
+
+    # ===== Команда, ссылки, финал =====
+
+    # 13. Команда
+    s = S[12]
     put(s, 5, "Наша команда")
     put(s, 6, "Семь участников: люди и AI-агенты, у каждого своя зона ответственности")
     for sid, w in ((5, 14.0), (6, 17.0)):  # шире, чтобы в любом шрифте оставались в одну строку
@@ -342,8 +449,8 @@ def main() -> None:
         avatar(img, ini, ai)
         shape(s, ph).insert_picture(str(img))
 
-    # 11. Сайт команды + приложение: две одинаковые QR-плашки
-    s = S[10]
+    # 14. Сайт команды + приложение: две одинаковые QR-плашки
+    s = S[13]
     put(s, 9, ["Сайт", "команды"])
     for para in shape(s, 9).text_frame.paragraphs:
         for run in para.runs:
@@ -353,7 +460,7 @@ def main() -> None:
     put(s, 2, "Сканируйте QR-код")
     put(s, 4, "и откройте Амбу")
     shape(s, 2).width = shape(s, 4).width = shape(s, 5).width = Inches(4.6)
-    put(s, 15, "11")  # в этом примере номер слайда — обычный текст
+    put(s, 15, "14")  # в этом примере номер слайда — обычный текст
     plate = shape(s, 16)
     set_text(plate, " ")
     twin = copy.deepcopy(plate._element)  # такая же фирменная плашка под QR, но в белой карточке
@@ -368,8 +475,8 @@ def main() -> None:
     for qr_png, left, name in ((ASSETS / "qr_site.png", 8.3, "qr-site"), (ASSETS / "qr_demo.png", plate.left / 914400, "qr-app")):
         picture(s, qr_png, left + 0.45, plate.top / 914400 + 0.45, w=plate.width / 914400 - 0.9).name = name  # qr-app меняет set_app_qr.py
 
-    # 12. Финал
-    s = S[11]
+    # 15. Финал
+    s = S[14]
     put(s, 6, ["Спасибо", "за внимание!"])
     thanks = shape(s, 6)
     thanks.top, thanks.height = Inches(6.6), Inches(3.6)
