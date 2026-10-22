@@ -35,10 +35,11 @@ if command -v node >/dev/null && [ -d presentation/node_modules/qrcode ]; then
   node -e '
     const qr = require("./presentation/node_modules/qrcode");
     const url = process.argv[1];
-    qr.toString(url, { type: "terminal", small: true }).then((s) => console.log(s));
     qr.toFile("data/lan-qr.png", url, { width: 900, margin: 2, color: { dark: "#0f2d3a", light: "#ffffff" } });
   ' "$URL"
-  echo "QR для экрана: data/lan-qr.png (open data/lan-qr.png)"
+  # в терминале QR из полублоков ломается от шрифта — показываем картинку
+  echo "QR для экрана: data/lan-qr.png"
+  [ "${NO_OPEN:-0}" = 1 ] || open data/lan-qr.png 2>/dev/null || true
 fi
 # QR «Приложение» в презентации — на этот же адрес (PDF пересобирается через LibreOffice, ~полминуты)
 if [ "${SKIP_DECK:-0}" != 1 ] && [ -x .venv/bin/python ]; then
