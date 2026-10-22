@@ -137,6 +137,11 @@ h2 { margin-bottom: 0; font-size: clamp(36px, 4.7vw, 58px); line-height: 1.04; l
 .closing .eyebrow { margin-bottom: 15px; }
 .closing h2 { margin-bottom: 24px; font-size: clamp(36px, 4.5vw, 54px); }
 .closing-mascot { position: absolute; top: -50px; right: 52px; width: 390px; height: 435px; }
+.hero-art, .closing-mascot { cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.hero-art img, .closing-mascot img { -webkit-user-drag: none; }
+.hero-art:focus-visible, .closing-mascot:focus-visible { outline: 3px solid var(--orange); outline-offset: 6px; border-radius: 32px; }
+.poke { position: absolute; z-index: 3; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 3px solid var(--orange); border-radius: 50%; pointer-events: none; animation: poke-ring .55s ease-out forwards; }
+@keyframes poke-ring { from { transform: scale(.35); opacity: .9; } to { transform: scale(3.4); opacity: 0; } }
 .closing-mascot img { width: 100%; height: 100%; object-fit: contain; animation: amba-float 8s ease-in-out -1.8s infinite; }
 
 .footer { display: flex; align-items: center; justify-content: space-between; width: min(1240px, calc(100% - 80px)); min-height: 82px; margin: auto; border-top: 1px solid #e8e9ea; color: var(--muted); font-size: 11px; }
