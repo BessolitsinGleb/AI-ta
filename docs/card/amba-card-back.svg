@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90mm" height="50mm" viewBox="0 0 1080 600">
+<defs>
+  <linearGradient id="yellow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFDD2D"/><stop offset="1" stop-color="#FFE560"/></linearGradient>
+  <linearGradient id="neutral" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3F3F5"/><stop offset="1" stop-color="#E0E1E3"/></linearGradient>
+  <linearGradient id="sea" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0F2D3A"/><stop offset="1" stop-color="#2E6B62"/></linearGradient>
+  <style>
+    text { font-family: 'T-Sans', 'PT Sans', Arial, sans-serif; fill: #333333; }
+    .muted { fill: #585958; }
+    .bold { font-weight: 700; }
+  </style>
+</defs>
+<rect width="1080" height="600" fill="#EFF0F1"/>
+<rect x="30" y="28" width="1020" height="544" rx="34" fill="#FFFFFF"/>
+<text x="66" y="88" font-size="38" class="bold">Наша команда</text>
+<rect x="66" y="108" width="946" height="3" rx="1.5" fill="url(#sea)"/>
+<g>
+      <circle cx="88" cy="151" r="21" fill="#333333"/>
+      <text x="88" y="156" font-size="15" font-weight="700" text-anchor="middle" fill="#FFDD2D">O5</text>
+      <text x="124" y="149" font-size="19" class="bold">Opus 5.5</text>
+      <text x="124" y="173" font-size="16" class="muted">Team Lead</text>
+    </g><g>
+      <circle cx="88" cy="213" r="21" fill="#FFDD2D"/>
+      <text x="88" y="218" font-size="15" font-weight="700" text-anchor="middle" fill="#333333">СД</text>
+      <text x="124" y="211" font-size="19" class="bold">Саша Дё</text>
+      <text x="124" y="235" font-size="16" class="muted">Backend developer</text>
+    </g><g>
+      <circle cx="88" cy="275" r="21" fill="#FFDD2D"/>
+      <text x="88" y="280" font-size="15" font-weight="700" text-anchor="middle" fill="#333333">ГБ</text>
+      <text x="124" y="273" font-size="19" class="bold">Глеб Бессолицин</text>
+      <text x="124" y="297" font-size="16" class="muted">Backend developer</text>
+    </g><g>
+      <circle cx="88" cy="337" r="21" fill="#FFDD2D"/>
+      <text x="88" y="342" font-size="15" font-weight="700" text-anchor="middle" fill="#333333">АК</text>
+      <text x="124" y="335" font-size="19" class="bold">Анфиса Кирсанова</text>
+      <text x="124" y="359" font-size="16" class="muted">ML-engineer / Frontend developer</text>
+    </g><g>
+      <circle cx="570" cy="151" r="21" fill="#FFDD2D"/>
+      <text x="570" y="156" font-size="15" font-weight="700" text-anchor="middle" fill="#333333">КЯ</text>
+      <text x="606" y="149" font-size="19" class="bold">Ксюша Яковлева</text>
+      <text x="606" y="173" font-size="16" class="muted">ML-engineer / Frontend developer</text>
+    </g><g>
+      <circle cx="570" cy="213" r="21" fill="#FFDD2D"/>
+      <text x="570" y="218" font-size="15" font-weight="700" text-anchor="middle" fill="#333333">АГ</text>
+      <text x="606" y="211" font-size="19" class="bold">Арнольд Гончаров</text>
+      <text x="606" y="235" font-size="16" class="muted">QA-engineer</text>
+    </g><g>
+      <circle cx="570" cy="275" r="21" fill="#333333"/>
+      <text x="570" y="280" font-size="15" font-weight="700" text-anchor="middle" fill="#FFDD2D">L6</text>
+      <text x="606" y="273" font-size="19" class="bold">Luna 6</text>
+      <text x="606" y="297" font-size="16" class="muted">Debug-engineer</text>
+    </g><svg x="910" y="345" width="112" height="121" viewBox="0 0 240 260" preserveAspectRatio="xMidYMid meet"><ns0:title xmlns:ns0="http://www.w3.org/2000/svg">Амба — тигрёнок-летописец</ns0:title>
+  <ns0:defs xmlns:ns0="http://www.w3.org/2000/svg">
+    <ns0:radialGradient id="fur" cx="50%" cy="40%" r="65%">
+      <ns0:stop offset="0" stop-color="#F5A03C" /><ns0:stop offset="1" stop-color="#D9701C" />
+    </ns0:radialGradient>
+    <ns0:radialGradient id="cap" cx="45%" cy="35%" r="70%">
+      <ns0:stop offset="0" stop-color="#D4392F" /><ns0:stop offset="1" stop-color="#8E1C16" />
+    </ns0:radialGradient>
+    <ns0:linearGradient id="scroll" x1="0" x2="0" y1="0" y2="1">
+      <ns0:stop offset="0" stop-color="#F6EAD0" /><ns0:stop offset="1" stop-color="#DCC394" />
+    </ns0:linearGradient>
+  </ns0:defs>
+  
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" class="amba-tail" d="M168 214 C 214 214, 226 176, 204 160 C 194 153, 186 162, 194 170 C 206 182, 196 198, 170 198 Z" fill="url(#fur)" stroke="#3A2414" stroke-width="3" stroke-linejoin="round" />
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M204 162 l-8 10 M214 178 l-12 4 M206 196 l-10 -6" stroke="#2A1A10" stroke-width="4" stroke-linecap="round" />
+  
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="120" cy="196" rx="62" ry="50" fill="url(#fur)" stroke="#3A2414" stroke-width="3" />
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="120" cy="206" rx="36" ry="34" fill="#FFF4E2" />
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M64 186 q10 4 14 14 M60 206 q12 2 16 12 M176 186 q-10 4 -14 14 M180 206 q-12 2 -16 12" stroke="#2A1A10" stroke-width="4" fill="none" stroke-linecap="round" />
+  
+  <ns0:g xmlns:ns0="http://www.w3.org/2000/svg" class="amba-scroll">
+    <ns0:rect x="58" y="196" width="58" height="34" rx="4" fill="url(#scroll)" stroke="#7A5A30" stroke-width="2.5" transform="rotate(-8 87 213)" />
+    <ns0:ellipse cx="58" cy="216" rx="6" ry="19" fill="#E9D5A8" stroke="#7A5A30" stroke-width="2.5" transform="rotate(-8 87 213)" />
+    <ns0:path d="M70 206 h34 M70 214 h30 M70 222 h24" stroke="#B3261E" stroke-width="2.4" stroke-linecap="round" transform="rotate(-8 87 213)" />
+  </ns0:g>
+  
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="86" cy="234" rx="20" ry="13" fill="#FFF4E2" stroke="#3A2414" stroke-width="3" />
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="154" cy="234" rx="20" ry="13" fill="#FFF4E2" stroke="#3A2414" stroke-width="3" />
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M80 230 v8 M88 229 v9 M148 230 v8 M156 229 v9" stroke="#3A2414" stroke-width="2.4" stroke-linecap="round" />
+  
+  <ns0:g xmlns:ns0="http://www.w3.org/2000/svg" class="amba-quill">
+    <ns0:path d="M150 212 C 170 170, 196 140, 222 118 C 214 150, 192 184, 158 214 Z" fill="#FFFDF7" stroke="#3A2414" stroke-width="2.5" stroke-linejoin="round" />
+    <ns0:path d="M154 212 L 216 126" stroke="#B9A27A" stroke-width="2" />
+    <ns0:path d="M150 212 l-6 12 l10 -8 z" fill="#B3261E" stroke="#3A2414" stroke-width="2" />
+    <ns0:circle cx="160" cy="206" r="13" fill="url(#fur)" stroke="#3A2414" stroke-width="3" />
+  </ns0:g>
+  
+  <ns0:circle xmlns:ns0="http://www.w3.org/2000/svg" cx="66" cy="62" r="22" fill="url(#fur)" stroke="#3A2414" stroke-width="3" />
+  <ns0:circle xmlns:ns0="http://www.w3.org/2000/svg" cx="174" cy="62" r="22" fill="url(#fur)" stroke="#3A2414" stroke-width="3" />
+  <ns0:circle xmlns:ns0="http://www.w3.org/2000/svg" cx="68" cy="64" r="11" fill="#FFF4E2" />
+  <ns0:circle xmlns:ns0="http://www.w3.org/2000/svg" cx="172" cy="64" r="11" fill="#FFF4E2" />
+  
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="120" cy="104" rx="70" ry="62" fill="url(#fur)" stroke="#3A2414" stroke-width="3" />
+  
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M106 74 h28 M110 84 h20 M104 94 h32 M120 70 v26" stroke="#2A1A10" stroke-width="4.5" stroke-linecap="round" />
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M52 92 q14 2 20 10 M50 110 q14 0 22 8 M188 92 q-14 2 -20 10 M190 110 q-14 0 -22 8" stroke="#2A1A10" stroke-width="5" fill="none" stroke-linecap="round" />
+  
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M56 124 C 60 150, 92 166, 120 166 C 148 166, 180 150, 184 124 C 170 134, 150 132, 120 132 C 90 132, 70 134, 56 124 Z" fill="#FFF4E2" />
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="120" cy="128" rx="34" ry="24" fill="#FFF4E2" />
+  
+  <ns0:g xmlns:ns0="http://www.w3.org/2000/svg" class="amba-eyes">
+    <ns0:ellipse cx="94" cy="106" rx="11" ry="13" fill="#2A1A10" />
+    <ns0:ellipse cx="146" cy="106" rx="11" ry="13" fill="#2A1A10" />
+    <ns0:circle cx="98" cy="101" r="4" fill="#fff" />
+    <ns0:circle cx="150" cy="101" r="4" fill="#fff" />
+    <ns0:circle cx="91" cy="111" r="1.8" fill="#fff" />
+    <ns0:circle cx="143" cy="111" r="1.8" fill="#fff" />
+  </ns0:g>
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" class="amba-brows" d="M82 90 q12 -6 22 0 M136 90 q12 -6 22 0" stroke="#2A1A10" stroke-width="3" fill="none" stroke-linecap="round" opacity="0" />
+  
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="76" cy="128" rx="10" ry="6" fill="#F28B82" opacity=".55" />
+  <ns0:ellipse xmlns:ns0="http://www.w3.org/2000/svg" cx="164" cy="128" rx="10" ry="6" fill="#F28B82" opacity=".55" />
+  
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M110 120 q10 -6 20 0 q-2 8 -10 11 q-8 -3 -10 -11 z" fill="#6B3A2A" />
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" class="amba-mouth-happy" d="M120 131 v5 M108 138 q6 7 12 -2 q6 9 12 2" stroke="#3A2414" stroke-width="3" fill="none" stroke-linecap="round" />
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" class="amba-mouth-sad" d="M120 131 v5 M108 144 q12 -8 24 0" stroke="#3A2414" stroke-width="3" fill="none" stroke-linecap="round" opacity="0" />
+  
+  <ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M84 132 h-24 M84 138 l-22 6 M156 132 h24 M156 138 l22 6" stroke="#3A2414" stroke-width="2" stroke-linecap="round" opacity=".7" />
+  
+  <ns0:g xmlns:ns0="http://www.w3.org/2000/svg" class="amba-cap">
+    <ns0:path d="M78 52 C 78 14, 104 2, 126 6 C 150 10, 166 30, 162 52 Z" fill="url(#cap)" stroke="#3A2414" stroke-width="3" stroke-linejoin="round" />
+    <ns0:path d="M92 20 q18 -8 40 2" stroke="#E8B04B" stroke-width="3" fill="none" stroke-linecap="round" />
+    <ns0:path d="M96 34 l6 -6 l6 6 l-6 6 z M132 34 l6 -6 l6 6 l-6 6 z M114 26 l6 -6 l6 6 l-6 6 z" fill="#E8B04B" />
+    <ns0:rect x="70" y="46" width="100" height="18" rx="9" fill="#7A4E2D" stroke="#3A2414" stroke-width="3" />
+    <ns0:path d="M80 54 q4 -4 8 0 q4 4 8 0 q4 -4 8 0 q4 4 8 0 q4 -4 8 0 q4 4 8 0 q4 -4 8 0 q4 4 8 0 q4 -4 8 0 q4 4 8 0" stroke="#A9774B" stroke-width="2" fill="none" />
+    <ns0:circle cx="128" cy="6" r="6" fill="#E8B04B" stroke="#3A2414" stroke-width="2.5" />
+  </ns0:g>
+</svg>
+<rect x="64" y="424" width="458" height="132" rx="24" fill="url(#neutral)"/>
+<rect x="80" y="442" width="96" height="96" rx="12" fill="#FFFFFF" stroke="#D5D7D9" stroke-width="2"/>
+<svg x="84" y="446" width="88" height="88" viewBox="0 0 35 35" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h35v35H0z"/><path stroke="#0f2d3a" d="M1 1.5h7m4 0h1m4 0h1m1 0h3m2 0h1m2 0h7M1 2.5h1m5 0h1m4 0h2m2 0h2m1 0h1m3 0h1m3 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h1m5 0h3m3 0h4m2 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h1m1 0h2m3 0h1m2 0h2m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h3m3 0h1m2 0h2m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h1m3 0h2m5 0h1m1 0h2m3 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m1 0h2m4 0h1m2 0h3M1 9.5h1m1 0h5m6 0h1m2 0h2m1 0h1m2 0h1m1 0h1m1 0h5M5 10.5h1m2 0h1m1 0h2m2 0h1m2 0h5m2 0h1m2 0h2m1 0h2m1 0h1M1 11.5h1m3 0h1m1 0h3m1 0h1m2 0h3m1 0h1m2 0h1m1 0h1m5 0h1m1 0h1M1 12.5h1m1 0h4m3 0h1m1 0h3m1 0h1m1 0h4m2 0h3m2 0h5M1 13.5h3m2 0h3m1 0h1m4 0h1m1 0h1m3 0h3m1 0h1m2 0h3m1 0h2M2 14.5h2m1 0h1m2 0h2m1 0h1m1 0h2m1 0h1m2 0h1m4 0h1m2 0h1m2 0h1m1 0h2M5 15.5h1m1 0h3m4 0h6m1 0h2m2 0h4m1 0h1m1 0h1M1 16.5h1m9 0h2m1 0h1m1 0h1m2 0h1m2 0h2m2 0h2m2 0h2M3 17.5h2m2 0h5m2 0h1m1 0h1m1 0h2m3 0h1m2 0h1m1 0h2m1 0h1m1 0h1M4 18.5h1m1 0h1m2 0h1m5 0h1m1 0h1m1 0h6m2 0h2m1 0h2m1 0h1M2 19.5h1m1 0h5m1 0h5m1 0h1m2 0h1m2 0h1m3 0h4m1 0h2M1 20.5h2m8 0h1m1 0h5m2 0h13M1 21.5h2m1 0h2m1 0h1m3 0h4m1 0h1m2 0h2m1 0h1m3 0h1m2 0h2m2 0h1M1 22.5h2m1 0h2m6 0h1m1 0h1m1 0h3m2 0h4m1 0h2m3 0h1m1 0h1M1 23.5h1m1 0h1m1 0h1m1 0h2m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h2m6 0h3M1 24.5h1m3 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h4m2 0h1m1 0h1m1 0h4M1 25.5h1m3 0h5m2 0h2m1 0h1m1 0h2m1 0h1m2 0h7m1 0h3M9 26.5h1m2 0h1m2 0h1m1 0h5m1 0h3m3 0h1m1 0h1m1 0h1M1 27.5h7m3 0h1m4 0h3m2 0h1m1 0h3m1 0h1m1 0h1m1 0h2M1 28.5h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h2m4 0h2m3 0h3m1 0h1M1 29.5h1m1 0h3m1 0h1m1 0h2m3 0h2m1 0h1m2 0h4m1 0h6m1 0h2M1 30.5h1m1 0h3m1 0h1m1 0h1m2 0h5m2 0h1m2 0h1m1 0h3m2 0h1m3 0h1M1 31.5h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h4m2 0h1m2 0h2m1 0h2m1 0h2M1 32.5h1m5 0h1m3 0h2m1 0h3m5 0h2m5 0h1m1 0h1M1 33.5h7m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m4 0h6m3 0h1"/></svg>
+<text x="195" y="473" font-size="20" class="bold">Сайт команды</text>
+<text x="195" y="506" font-size="15.5" class="muted">bessolitsingleb.github.io/AI-ta/site</text>
+
+<rect x="544" y="424" width="468" height="132" rx="24" fill="url(#neutral)"/>
+<rect x="560" y="442" width="96" height="96" rx="12" fill="#FFFFFF" stroke="#D5D7D9" stroke-width="2"/>
+<svg x="564" y="446" width="88" height="88" viewBox="0 0 35 35" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h35v35H0z"/><path stroke="#0f2d3a" d="M1 1.5h7m3 0h1m1 0h1m1 0h1m1 0h1m1 0h6m2 0h7M1 2.5h1m5 0h1m2 0h1m2 0h1m2 0h1m2 0h1m1 0h2m4 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m4 0h2m3 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h2m1 0h2m5 0h2m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h4m2 0h3m3 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h2m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1m1 0h2m1 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h2m4 0h1m1 0h1m2 0h3m1 0h1M1 9.5h1m1 0h5m3 0h1m1 0h3m2 0h1m1 0h1m2 0h3m1 0h5M2 10.5h1m1 0h3m2 0h2m3 0h2m2 0h4m1 0h3m1 0h2m1 0h2m1 0h1M4 11.5h5m1 0h1m2 0h6m4 0h1m3 0h1m1 0h1m1 0h2M1 12.5h2m7 0h5m2 0h3m1 0h1m3 0h2m2 0h3m1 0h1M1 13.5h5m1 0h6m2 0h3m3 0h3m1 0h1m3 0h2M2 14.5h4m3 0h2m1 0h3m1 0h1m1 0h2m2 0h1m2 0h1m1 0h1m3 0h3M6 15.5h5m2 0h6m2 0h1m3 0h3m2 0h3M1 16.5h2m2 0h1m2 0h1m1 0h2m1 0h1m2 0h1m2 0h1m2 0h1m2 0h4m1 0h2M1 17.5h1m1 0h5m1 0h1m2 0h1m1 0h6m1 0h1m1 0h1m1 0h2m1 0h2m3 0h1M2 18.5h1m1 0h1m1 0h1m2 0h1m1 0h1m2 0h2m3 0h4m1 0h1m2 0h2m1 0h4M1 19.5h1m1 0h6m2 0h6m2 0h1m1 0h2m2 0h5m1 0h2M2 20.5h4m2 0h1m1 0h6m4 0h1m1 0h4m1 0h5m1 0h1M1 21.5h1m5 0h1m2 0h1m1 0h2m2 0h1m2 0h1m2 0h1m3 0h1m1 0h3m1 0h2M1 22.5h1m3 0h1m2 0h1m1 0h2m1 0h6m2 0h1m1 0h2m2 0h1m5 0h1M1 23.5h1m1 0h2m2 0h2m3 0h1m1 0h2m4 0h1m2 0h1m1 0h1m3 0h4M1 24.5h1m2 0h1m1 0h1m2 0h2m3 0h2m1 0h1m2 0h4m1 0h2m3 0h4M1 25.5h1m1 0h1m1 0h3m1 0h3m1 0h3m2 0h3m2 0h1m1 0h5m3 0h1M9 26.5h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m3 0h1m1 0h1m1 0h1M1 27.5h7m5 0h2m1 0h3m2 0h1m1 0h3m1 0h1m1 0h1m1 0h1M1 28.5h1m5 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m1 0h1m2 0h2m3 0h3M1 29.5h1m1 0h3m1 0h1m1 0h1m1 0h2m3 0h2m3 0h3m1 0h6M1 30.5h1m1 0h3m1 0h1m1 0h4m2 0h2m2 0h1m2 0h1m1 0h3m2 0h2m2 0h1M1 31.5h1m1 0h3m1 0h1m1 0h2m3 0h6m1 0h4m2 0h2m2 0h1M1 32.5h1m5 0h1m2 0h1m2 0h1m2 0h1m5 0h1m1 0h1m4 0h3M1 33.5h7m1 0h1m1 0h3m2 0h1m1 0h1m2 0h1m1 0h4m1 0h1m1 0h1m1 0h1"/></svg>
+<text x="675" y="473" font-size="20" class="bold">Приложение</text>
+<text x="675" y="506" font-size="15.5" class="muted">amba-production-3ab7.up.railway.app</text>
+</svg>

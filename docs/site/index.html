@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffdd2d">
+  <meta name="description" content="Амба — AI-гид по Приморью. Собирает план поездки, проверяет детали и помогает доработать маршрут в чате.">
+  <title>Амба — AI-гид по Приморью</title>
+  <link rel="icon" href="assets/amba.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="map-world" aria-hidden="true">
+    <svg class="map-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="land-clip"><path d="M0 0H1010C960 105 1080 130 1018 224S1080 360 983 443 1030 568 933 656 1005 780 881 900H0Z"/></clipPath>
+        <pattern id="minor-roads" width="98" height="76" patternUnits="userSpaceOnUse" patternTransform="rotate(-17)">
+          <path d="M0 12H98M0 51H98M20 0V76M73 0V76" fill="none" stroke="#68818a" stroke-width="1.2" stroke-opacity=".24"/>
+          <path d="M43 12V51M0 31H98" fill="none" stroke="#68818a" stroke-width=".8" stroke-opacity=".15"/>
+        </pattern>
+        <linearGradient id="sea-fill" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#d4e5e2"/><stop offset="1" stop-color="#afceca"/></linearGradient>
+        <filter id="route-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <path d="M0 0H1440V900H0Z" fill="#f4f4f0"/>
+      <path d="M1010 0C960 105 1080 130 1018 224S1080 360 983 443 1030 568 933 656 1005 780 881 900H1440V0Z" fill="url(#sea-fill)"/>
+      <path d="M1010 0C960 105 1080 130 1018 224S1080 360 983 443 1030 568 933 656 1005 780 881 900" fill="none" stroke="#6e9995" stroke-width="3" stroke-opacity=".55"/>
+      <path d="M0 0H1440V900H0Z" fill="url(#minor-roads)" opacity=".76" clip-path="url(#land-clip)"/>
+      <g fill="none" stroke="#779294" stroke-width="2" stroke-opacity=".2" clip-path="url(#land-clip)">
+        <path d="M-40 133C155 88 237 174 420 126S724 74 866 146 1003 170 1120 98"/><path d="M-40 167C160 122 245 208 430 160S735 108 876 180 1018 205 1134 130"/><path d="M-40 201C168 156 252 242 440 194S747 142 887 214 1030 239 1148 164"/>
+        <path d="M-60 518C133 472 267 558 440 511S728 458 877 531 1000 559 1118 483"/><path d="M-50 552C145 506 278 592 450 545S740 493 890 566 1014 593 1130 517"/><path d="M-40 586C158 540 288 626 460 579S752 528 901 600 1027 628 1143 551"/>
+        <path d="M-40 790C160 744 277 830 460 783S750 730 900 803 1000 820 1085 770"/><path d="M-30 824C170 778 290 864 475 817S770 764 915 837 1015 854 1100 804"/>
+      </g>
+      <g fill="none" stroke="#fff" stroke-width="13" stroke-opacity=".84" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M850 60C790 160 830 215 790 220S690 280 640 330 690 405 740 470 770 525 650 585 600 650 680 710 730 770 600 800 530 840 480 850"/>
+        <path d="M210 0C286 115 192 225 320 308S435 388 390 469 330 604 469 678 607 748 574 900"/>
+        <path d="M0 350C190 404 291 302 435 354S660 420 790 358M0 690C180 742 320 639 456 688S610 740 705 701"/>
+      </g>
+      <g fill="none" stroke="#607f85" stroke-width="2.2" stroke-opacity=".62" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M850 60C790 160 830 215 790 220S690 280 640 330 690 405 740 470 770 525 650 585 600 650 680 710 730 770 600 800 530 840 480 850"/>
+        <path d="M210 0C286 115 192 225 320 308S435 388 390 469 330 604 469 678 607 748 574 900"/>
+        <path d="M0 350C190 404 291 302 435 354S660 420 790 358M0 690C180 742 320 639 456 688S610 740 705 701"/>
+      </g>
+      <path id="route-base" d="M850 60C790 160 830 215 790 220S690 280 640 330 690 405 740 470 770 525 650 585 600 650 680 710 730 770 600 800 530 840 480 850" fill="none" stroke="#0f2d3a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".52"/>
+      <path id="route-progress" d="M850 60C790 160 830 215 790 220S690 280 640 330 690 405 740 470 770 525 650 585 600 650 680 710 730 770 600 800 530 840 480 850" fill="none" stroke="#f0641e" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" filter="url(#route-glow)"/>
+      <g class="route-stops" fill="#ffdd2d" stroke="#0f2d3a" stroke-width="4">
+        <circle data-stop="0" cx="850" cy="60" r="10"/><circle data-stop=".25" cx="790" cy="220" r="9"/><circle data-stop=".5" cx="740" cy="470" r="9"/><circle data-stop=".75" cx="680" cy="710" r="9"/><circle data-stop="1" cx="480" cy="850" r="11"/>
+      </g>
+      <circle id="trail-a" class="traveler-trail trail-a" r="6"/>
+      <circle id="trail-b" class="traveler-trail trail-b" r="4"/>
+      <circle id="trail-c" class="traveler-trail trail-c" r="2.5"/>
+      <g id="traveler" class="traveler" transform="translate(850 60)"><circle class="traveler-halo" r="25"/><circle class="traveler-core" r="10"/><circle class="traveler-center" r="3.5"/></g>
+    </svg>
+  </div>
+  <div class="film-progress" aria-hidden="true"><span></span></div>
+  <div class="film-grain" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Амба — на главную">
+      <span class="brand-mark">Т</span><span class="brand-divider"></span><span class="brand-school">ОБРАЗОВАНИЕ</span>
+    </a>
+    <nav class="nav" aria-label="Основная навигация">
+      <a href="#project">О проекте</a>
+      <a href="#team">Команда</a>
+      <a href="#links">Ссылки</a>
+      <a class="nav-cta" href="https://amba-production-3ab7.up.railway.app" target="_blank" rel="noreferrer">Открыть приложение <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" data-scene="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span>Т-Банк × Сириус · командный проект</p>
+        <h1>Амба —<br><span>AI-гид по Приморью</span></h1>
+        <p class="hero-lead">Опишите поездку обычными словами — Амба соберёт план с местами, дорогами, ночёвкой, кафе и погодой.</p>
+        <div class="hero-actions">
+          <a class="button button-dark" href="https://amba-production-3ab7.up.railway.app" target="_blank" rel="noreferrer">Перейти в приложение <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="https://github.com/BessolitsinGleb/AI-ta" target="_blank" rel="noreferrer">Код на GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="hero-note"><span class="note-line"></span><span>План можно продолжить и доработать в чате</span></div>
+      </div>
+      <div class="hero-art" aria-label="Амба, тигрёнок-проводник" role="img">
+        <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+        <div class="art-label"><span class="label-dot"></span>Путешествие начинается здесь</div>
+        <img src="assets/amba.svg" alt="Амба — тигрёнок в шапке-мурмолке с пером и свитком">
+        <span class="art-coast coast-a" aria-hidden="true"></span>
+        <span class="art-coast coast-b" aria-hidden="true"></span>
+      </div>
+      <div class="hero-bottom"><span>ПРИМОРСКИЙ КРАЙ</span><span>43° 07′ N&nbsp;&nbsp; 131° 54′ E</span></div>
+    </section>
+
+    <section class="section project" id="project" data-scene="project">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="eyebrow-dot orange"></span>О проекте</p>
+        <h2>Поездка, в которой<br>всё сходится.</h2>
+      </div>
+      <p class="project-intro">Амба помогает спланировать путешествие по Приморскому краю и проверить детали до того, как вы отправитесь в путь.</p>
+      <div class="feature-grid">
+        <article class="feature-card feature-yellow">
+          <span class="feature-index">01</span>
+          <div class="feature-symbol route-symbol" aria-hidden="true"><i></i><i></i><i></i></div>
+          <h3>Собирает маршрут</h3>
+          <p>Места, путь по дорогам, ночёвка, кафе и погода — в одном плане.</p>
+        </article>
+        <article class="feature-card feature-neutral">
+          <span class="feature-index">02</span>
+          <div class="feature-symbol check-symbol" aria-hidden="true">✓</div>
+          <h3>Проверяет детали</h3>
+          <p>Сверяет режим работы, погоду, заправки и расписания, чтобы план был выполнимым.</p>
+        </article>
+        <article class="feature-card feature-sea">
+          <span class="feature-index">03</span>
+          <div class="feature-symbol chat-symbol" aria-hidden="true"><i></i><i></i><i></i></div>
+          <h3>Дорабатывает в чате</h3>
+          <p>Попросите изменить план — Амба учтёт пожелания и предложит обновлённый вариант.</p>
+        </article>
+      </div>
+      <p class="data-note"><span class="data-mark">i</span>Жильё, расписания и наличие топлива используют учебные данные — сверяйтесь перед поездкой.</p>
+    </section>
+
+    <section class="team-section" id="team" data-scene="team">
+      <div class="team-inner">
+        <div class="team-heading">
+          <div><p class="eyebrow"><span class="eyebrow-dot green"></span>Т-Банк × Сириус</p><h2>Наша команда</h2></div>
+          <p>Семь участников — один гид по Приморью.</p>
+        </div>
+        <div class="team-grid">
+          <article class="person"><span class="avatar avatar-ai">O5</span><div><h3>Opus 5.5</h3><p>Team Lead</p></div></article>
+          <article class="person"><span class="avatar">СД</span><div><h3>Саша Дё</h3><p>Backend developer</p></div></article>
+          <article class="person"><span class="avatar">ГБ</span><div><h3>Глеб Бессолицин</h3><p>Backend developer</p></div></article>
+          <article class="person"><span class="avatar">АК</span><div><h3>Анфиса Кирсанова</h3><p>ML-engineer / Frontend developer</p></div></article>
+          <article class="person"><span class="avatar">КЯ</span><div><h3>Ксюша Яковлева</h3><p>ML-engineer / Frontend developer</p></div></article>
+          <article class="person"><span class="avatar">АГ</span><div><h3>Арнольд Гончаров</h3><p>QA-engineer</p></div></article>
+          <article class="person"><span class="avatar avatar-ai">L6</span><div><h3>Luna 6</h3><p>Debug-engineer</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section links" id="links" data-scene="links">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="eyebrow-dot orange"></span>Ссылки на проект</p>
+        <h2>Наведите камеру —<br>и всё под рукой.</h2>
+      </div>
+      <div class="qr-grid">
+        <a class="qr-card qr-yellow" href="https://amba-production-3ab7.up.railway.app" target="_blank" rel="noreferrer">
+          <img src="assets/qr-app.svg" alt="QR-код приложения Амба" width="168" height="168">
+          <h3>Приложение</h3>
+          <p>Соберите план поездки по Приморью</p>
+          <span class="qr-url">amba-production-3ab7.up.railway.app</span>
+        </a>
+        <a class="qr-card qr-neutral" href="https://bessolitsingleb.github.io/AI-ta/site/" target="_blank" rel="noreferrer">
+          <img src="assets/qr-site.svg" alt="QR-код этого сайта" width="168" height="168">
+          <h3>Сайт команды</h3>
+          <p>Эта страница — поделитесь ей</p>
+          <span class="qr-url">bessolitsingleb.github.io/AI-ta/site</span>
+        </a>
+        <a class="qr-card qr-sea" href="https://github.com/BessolitsinGleb/AI-ta" target="_blank" rel="noreferrer">
+          <img src="assets/qr-code.svg" alt="QR-код репозитория на GitHub" width="168" height="168">
+          <h3>Код на GitHub</h3>
+          <p>Исходники, инструкция и замеры</p>
+          <span class="qr-url">github.com/BessolitsinGleb/AI-ta</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="closing" data-scene="closing">
+      <div class="closing-copy"><p class="eyebrow"><span class="eyebrow-dot"></span>Амба · AI-гид по Приморью</p><h2>Соберите свой<br>план поездки.</h2>
+        <div class="hero-actions"><a class="button button-dark" href="https://amba-production-3ab7.up.railway.app" target="_blank" rel="noreferrer">Открыть приложение <span aria-hidden="true">↗</span></a><a class="text-link" href="https://github.com/BessolitsinGleb/AI-ta" target="_blank" rel="noreferrer">Посмотреть код <span aria-hidden="true">↗</span></a></div>
+      </div>
+      <div class="closing-mascot"><img src="assets/amba.svg" alt="Амба машет гусиным пером"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a class="footer-brand" href="#top">Амба<span> · </span>Т-Банк × Сириус</a>
+    <p>Командный проект</p>
+    <div class="footer-links"><a href="https://github.com/BessolitsinGleb/AI-ta" target="_blank" rel="noreferrer">GitHub ↗</a><a href="https://amba-production-3ab7.up.railway.app" target="_blank" rel="noreferrer">Приложение ↗</a></div>
+  </footer>
+  <script>
+    (() => {
+      const route = document.querySelector('#route-progress');
+      const traveler = document.querySelector('#traveler');
+      const trails = [document.querySelector('#trail-a'), document.querySelector('#trail-b'), document.querySelector('#trail-c')];
+      const stops = [...document.querySelectorAll('[data-stop]')];
+      const length = route.getTotalLength();
+      route.style.strokeDasharray = `${length} ${length}`;
+      route.style.strokeDashoffset = length;
+      let queued = false;
+      let lensQueued = false;
+      let focusX = window.innerWidth * .5;
+      let focusY = window.innerHeight * .42;
+      let targetFocusX = focusX;
+      let targetFocusY = focusY;
+      const easeLens = () => {
+        focusX += (targetFocusX - focusX) * .13;
+        focusY += (targetFocusY - focusY) * .13;
+        document.documentElement.style.setProperty('--focus-x', `${focusX}px`);
+        document.documentElement.style.setProperty('--focus-y', `${focusY}px`);
+        if (Math.abs(targetFocusX - focusX) > .35 || Math.abs(targetFocusY - focusY) > .35) {
+          window.requestAnimationFrame(easeLens);
+        } else {
+          focusX = targetFocusX;
+          focusY = targetFocusY;
+          lensQueued = false;
+        }
+      };
+      const updateRoute = () => {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
+        document.documentElement.style.setProperty('--scroll-progress', progress.toFixed(4));
+        document.documentElement.style.setProperty('--hero-parallax', `${Math.max(-96, window.scrollY * -.075)}px`);
+        route.style.strokeDashoffset = String(length * (1 - progress));
+        const point = route.getPointAtLength(length * progress);
+        traveler.setAttribute('transform', `translate(${point.x} ${point.y})`);
+        trails.forEach((trail, index) => {
+          const trailPoint = route.getPointAtLength(Math.max(0, length * progress - length * (.014 + index * .014)));
+          trail.setAttribute('transform', `translate(${trailPoint.x} ${trailPoint.y})`);
+        });
+        const svgPoint = route.ownerSVGElement.createSVGPoint();
+        svgPoint.x = point.x;
+        svgPoint.y = point.y;
+        const focus = svgPoint.matrixTransform(route.getScreenCTM());
+        targetFocusX = focus.x;
+        targetFocusY = focus.y;
+        if (!lensQueued) {
+          lensQueued = true;
+          window.requestAnimationFrame(easeLens);
+        }
+        stops.forEach((stop) => stop.classList.toggle('is-lit', Number(stop.dataset.stop) <= progress + .015));
+        queued = false;
+      };
+      const scheduleUpdate = () => {
+        if (!queued) { queued = true; window.requestAnimationFrame(updateRoute); }
+      };
+      window.addEventListener('scroll', scheduleUpdate, { passive: true });
+      window.addEventListener('resize', scheduleUpdate);
+      window.addEventListener('load', scheduleUpdate, { once: true });
+      updateRoute();
+
+      const revealItems = [...document.querySelectorAll('.section-heading, .project-intro, .feature-card, .data-note, .team-heading, .person, .qr-card, .closing-copy')];
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if ('IntersectionObserver' in window && !reduceMotion) {
+        document.documentElement.classList.add('motion-ready');
+        const revealObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          });
+        }, { threshold: .12, rootMargin: '0px 0px -6% 0px' });
+        revealItems.forEach((item, index) => {
+          item.classList.add('reveal');
+          if (item.matches('.feature-card, .person, .qr-card')) item.style.setProperty('--reveal-delay', `${(index % 3) * 75}ms`);
+          revealObserver.observe(item);
+        });
+      } else {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+      }
+
+      const scenes = [...document.querySelectorAll('[data-scene]')];
+      if ('IntersectionObserver' in window) {
+        const sceneObserver = new IntersectionObserver((entries) => {
+          const current = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (current) document.body.dataset.scene = current.target.dataset.scene;
+        }, { threshold: [0, .2, .45, .7], rootMargin: '-12% 0px -18% 0px' });
+        scenes.forEach((scene) => sceneObserver.observe(scene));
+      }
+    })();
+  </script>
+</body>
+</html>

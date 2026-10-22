@@ -3,7 +3,8 @@
 <h3 align="center">Пишете поездку обычными словами — агент собирает план и проверяет, что он сходится с реальностью</h3>
 
 <p align="center">
-  <a href="https://amba-production-3ab7.up.railway.app"><img src="https://img.shields.io/badge/демо-онлайн-F0641E?style=for-the-badge" alt="Демо"></a>
+  <a href="https://amba-production-3ab7.up.railway.app"><img src="https://img.shields.io/badge/приложение-онлайн-F0641E?style=for-the-badge" alt="Приложение"></a>
+  <a href="https://bessolitsingleb.github.io/AI-ta/site/"><img src="https://img.shields.io/badge/сайт-команды-FFDD2D?style=for-the-badge" alt="Сайт команды"></a>
   <img src="https://img.shields.io/badge/Python-3.12-0F2D3A?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/DeepSeek-OpenRouter-3D5A66?style=for-the-badge" alt="DeepSeek через OpenRouter">

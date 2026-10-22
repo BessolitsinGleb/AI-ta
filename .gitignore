@@ -11,3 +11,6 @@ slide-*.jpg
 .claude/
 .test.db
 data/
+
+# lock-файлы Office
+~$*

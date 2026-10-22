@@ -26,7 +26,7 @@ OUT = ROOT / "presentation" / "Amba_TBank.pptx"
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
 DEMO_URL = "amba-production-3ab7.up.railway.app"
-REPO_URL = "github.com/BessolitsinGleb/AI-ta"
+SITE_URL = "bessolitsingleb.github.io/AI-ta/site"
 
 # Порядок: номер слайда-примера в шаблоне → наш слайд.
 ORDER = [13, 24, 64, 53, 33, 63, 26, 32, 21, 67, 35, 82]
@@ -216,7 +216,7 @@ def main() -> None:
 
     # 4. Как это выглядит
     s = S[3]
-    put(s, 4, "Демо")
+    put(s, 4, "Приложение")
     put(s, 2, "Как это выглядит")
     put(s, 7, "Сначала коротко уточнит: кухня, бюджет, темп")
     put(s, 6, "Реальные кафе, ссылки и маршрут по улицам")
@@ -343,18 +343,22 @@ def main() -> None:
         avatar(img, ini, ai)
         shape(s, ph).insert_picture(str(img))
 
-    # 11. Код на GitHub + демо: две одинаковые QR-плашки
+    # 11. Сайт команды + приложение: две одинаковые QR-плашки
     s = S[10]
-    put(s, 9, ["Код", "на GitHub"])
+    put(s, 9, ["Сайт", "команды"])
     for para in shape(s, 9).text_frame.paragraphs:
         for run in para.runs:
-            run.font.size = Pt(56)  # было 72: с запасом под широкие шрифты «на GitHub» в одну строку
-    put(s, 10, REPO_URL)
-    shape(s, 10).top, shape(s, 10).height = Inches(4.0), Inches(1.0)
-    put(s, 5, "Демо")
+            run.font.size = Pt(56)  # было 72: с запасом под широкие шрифты
+    host, path = SITE_URL.split("/", 1)
+    put(s, 10, [host, "/" + path])  # перенос по слэшу, а не посреди «github.io»
+    for para in shape(s, 10).text_frame.paragraphs:
+        for run in para.runs:
+            run.font.size = Pt(28)
+    shape(s, 10).top, shape(s, 10).height = Inches(4.0), Inches(1.1)
+    put(s, 5, "Приложение")
     put(s, 2, "Сканируйте QR-код")
-    put(s, 4, "и попробуйте Амбу")
-    shape(s, 2).width = shape(s, 4).width = Inches(4.6)
+    put(s, 4, "и откройте Амбу")
+    shape(s, 2).width = shape(s, 4).width = shape(s, 5).width = Inches(4.6)
     put(s, 15, "11")  # в этом примере номер слайда — обычный текст
     plate = shape(s, 16)
     set_text(plate, " ")
@@ -367,7 +371,7 @@ def main() -> None:
     twin_shape.fill.solid()
     from pptx.dml.color import RGBColor
     twin_shape.fill.fore_color.rgb = RGBColor(0xEF, 0xF0, 0xF1)
-    for qr_png, left in ((ASSETS / "qr_repo.png", 8.3), (ASSETS / "qr_demo.png", plate.left / 914400)):
+    for qr_png, left in ((ASSETS / "qr_site.png", 8.3), (ASSETS / "qr_demo.png", plate.left / 914400)):
         picture(s, qr_png, left + 0.45, plate.top / 914400 + 0.45, w=plate.width / 914400 - 0.9)
 
     # 12. Финал
