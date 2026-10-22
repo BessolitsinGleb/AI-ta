@@ -1,4 +1,6 @@
-import { esc, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine } from "./render.js";
+import { api, currentUser, freshAuthHeader, logout, onAuth, refresh } from "./api.js";
+import * as pages from "./pages.js";
+import { esc, humanDate, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
 const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "" };
@@ -21,6 +23,118 @@ async function loadMascot() {
     state.mascot = "";
   }
   document.querySelectorAll("[data-mascot]").forEach((el) => { el.innerHTML = state.mascot; });
+}
+
+// ---------- уведомления ----------
+
+let toastTimer;
+function toast(html) {
+  const t = $("#toast");
+  t.innerHTML = html;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+}
+
+// ---------- аккаунт в шапке ----------
+
+function renderAccount(user) {
+  const box = $("#account");
+  if (!user) {
+    box.innerHTML = '<a class="go small" href="#/login">Войти</a>';
+  } else {
+    const initials = (user.name || user.email).trim().slice(0, 1).toUpperCase();
+    box.innerHTML = `<details class="acc-menu"><summary aria-label="Меню аккаунта"><span class="avatar">${esc(initials)}</span><span class="acc-name">${esc(user.name || user.email)}</span></summary>
+      <div class="acc-drop"><a href="#/profile">Профиль</a><a href="#/onboarding">Мои интересы</a><a href="#/trips">Мои поездки</a>
+      <button type="button" id="logout">Выйти</button></div></details>`;
+    box.querySelector("#logout").addEventListener("click", async () => { await logout(); navigate("/"); });
+  }
+  loadForYou(user);
+}
+
+async function loadForYou(user) {
+  const box = $("#for-you");
+  if (!user?.onboarded) { box.hidden = true; return; }
+  try {
+    const r = await api("/api/recommendations");
+    box.innerHTML = `<span class="examples-title">Для вас:</span>` + r.trips.slice(0, 3)
+      .map((t) => `<button type="button" class="idea-chip" data-q="${esc(t.query)}"><span aria-hidden="true">${esc(t.emoji)}</span> ${esc(t.title)}</button>`).join("") +
+      '<a class="more-link" href="#/recommendations">Все идеи</a>';
+    box.hidden = false;
+    box.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => startPlan(b.dataset.q)));
+  } catch { box.hidden = true; }
+}
+
+// ---------- роутер ----------
+
+const ROUTES = {
+  "/login": [pages.loginPage, false], "/register": [pages.registerPage, false], "/check-email": [pages.checkEmailPage, false],
+  "/forgot": [pages.forgotPage, false], "/reset": [pages.resetPage, false],
+  "/welcome": [(el, ctx) => pages.onboardingPage(el, { ...ctx, welcome: true }), true], "/onboarding": [pages.onboardingPage, true],
+  "/profile": [pages.profilePage, true], "/trips": [pages.tripsPage, true], "/recommendations": [pages.recommendationsPage, true],
+};
+
+function navigate(path) {
+  if (location.hash === `#${path}`) route();
+  else location.hash = path;
+}
+
+function startPlan(query) {
+  navigate("/");
+  $("#q").value = query;
+  ask(query);
+}
+
+async function route() {
+  const raw = location.hash.slice(1) || "/";
+  const [path, qs] = raw.split("?");
+  const params = new URLSearchParams(qs || "");
+  document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("active", a.dataset.nav === (path.startsWith("/trips") ? "/trips" : path)));
+  document.querySelector(".acc-menu")?.removeAttribute("open");
+  const page = $("#page");
+  const trip = path.match(/^\/trips\/([a-f0-9]{32})$/);
+  if (path === "/" || trip) {
+    page.hidden = true;
+    $("#planner").hidden = false;
+    $("#saved-banner").hidden = true;
+    if (trip) {
+      if (!currentUser()) return navigate(`/login?next=${encodeURIComponent(path)}`);
+      openTrip(trip[1]);
+    }
+    return;
+  }
+  const [render, needsAuth] = ROUTES[path] || [];
+  if (!render) return navigate("/");
+  if (needsAuth && !currentUser()) return navigate(`/login?next=${encodeURIComponent(path)}`);
+  $("#planner").hidden = true;
+  page.hidden = false;
+  window.scrollTo(0, 0);
+  try {
+    await render(page, { params, navigate, startPlan, mascot: state.mascot });
+  } catch (e) {
+    page.innerHTML = `<div class="acc-card narrow"><h1>Не получилось загрузить</h1><p class="error-box">${esc(e.message)}</p></div>`;
+  }
+}
+
+async function openTrip(id) {
+  try {
+    const t = await api(`/api/trips/${id}`);
+    const banner = $("#saved-banner");
+    banner.innerHTML = `<div><b>Сохранённая поездка</b> от ${esc(humanDate(t.created_at))}: «${esc(t.query)}»</div>
+      <div class="q-actions"><button type="button" class="ghost-btn" id="replan">Собрать заново</button><a class="ghost-btn" href="#/trips">Все поездки</a></div>`;
+    banner.hidden = false;
+    banner.querySelector("#replan").addEventListener("click", () => startPlan(t.query));
+    $("#workspace").hidden = false;
+    showIntents(t.result.intents);
+    $("#trace").innerHTML = (t.result.trace || []).filter((x) => x.kind === "tool")
+      .map((x) => `<li class="tr-tool"><b>${esc(TOOL_LABELS[x.name] || x.name)}</b></li>${x.summary ? `<li class="tr-result">${esc(x.summary)}</li>` : ""}`).join("");
+    ensureMap();
+    showResult(t.result);
+    banner.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    toast(esc(e.message));
+    navigate("/trips");
+  }
 }
 
 async function loadMeta() {
@@ -186,7 +300,7 @@ async function ask(query, answers) {
   try {
     const resp = await fetch("/api/plan/stream", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await freshAuthHeader()) },
       body: JSON.stringify({ query, version: $("#version").value || undefined, answers }),
     });
     if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
@@ -206,7 +320,7 @@ async function ask(query, answers) {
         if (!line) continue;
         const ev = JSON.parse(line.slice(6));
         if (ev.type === "start") showIntents(ev.intents);
-        else if (ev.type === "result") { got = true; showResult(ev.result); }
+        else if (ev.type === "result") { got = true; showResult(ev.result); afterResult(ev.result); }
         else addTrace(ev);
       }
     }
@@ -220,6 +334,19 @@ async function ask(query, answers) {
   }
 }
 
-loadMascot();
+function afterResult(result) {
+  if (result.trip_id) {
+    toast(`Сохранено в <a href="#/trips/${esc(result.trip_id)}">«Мои поездки»</a>`);
+  } else if (result.status === "plan" && !currentUser() && !sessionStorage.getItem("amba-guest-hint")) {
+    sessionStorage.setItem("amba-guest-hint", "1");
+    toast('<a href="#/register">Зарегистрируйтесь</a>, чтобы поездки сохранялись, а Амба подбирал идеи под вас');
+  }
+}
+
+const mascotReady = loadMascot();
 loadMeta();
 setupForm();
+onAuth(renderAccount);
+window.addEventListener("hashchange", route);
+// восстанавливаем сессию по refresh-cookie и загружаем маскота, потом показываем страницу
+Promise.all([refresh(), mascotReady]).finally(route);

@@ -19,15 +19,20 @@
       <span class="brand-face" data-mascot></span>
       <span class="brand-name">Амба</span>
     </a>
+    <nav class="mainnav" aria-label="Разделы">
+      <a href="#/" data-nav="/">Спланировать</a>
+      <a href="#/recommendations" data-nav="/recommendations">Идеи для вас</a>
+      <a href="#/trips" data-nav="/trips">Мои поездки</a>
+    </nav>
     <div class="topbar-right">
-      <span id="mode-badge" class="badge" hidden></span>
-      <label class="version-pick"><span>Версия агента</span>
-        <select id="version"></select>
-      </label>
+      <div class="account" id="account"><a class="go small" href="#/login">Войти</a></div>
     </div>
   </header>
 
   <main>
+    <section class="page" id="page" hidden aria-live="polite"></section>
+    <div id="planner">
+    <div class="saved-banner" id="saved-banner" hidden></div>
     <section class="hero" id="hero">
       <h1>Куда поедем по&nbsp;Приморью?</h1>
       <p class="lead">Опишите поездку своими словами. Амба соберёт места, маршрут, ночёвку и&nbsp;погоду — и&nbsp;проверит, что всё сходится: музеи открыты, дождь не&nbsp;помешает, бензин по&nbsp;пути есть, на&nbsp;последний автобус успеваете.</p>
@@ -52,6 +57,11 @@
       <div class="examples">
         <span class="examples-title">Попробуйте:</span>
         <div id="examples" class="examples-list"></div>
+      </div>
+      <div class="for-you" id="for-you" hidden></div>
+      <div class="dev-row">
+        <span id="mode-badge" class="badge" hidden></span>
+        <label class="version-pick"><span>Версия агента</span> <select id="version"></select></label>
       </div>
     </section>
 
@@ -80,7 +90,9 @@
         </details>
       </aside>
     </section>
+    </div>
   </main>
+  <div class="toast" id="toast" role="status" hidden></div>
 
   <footer class="foot">
     <p>Данные: Open-Meteo, OSRM, OpenStreetMap и Nominatim, Википедия. Жильё, расписания и наличие топлива — учебные наборы данных, сверяйтесь перед поездкой.</p>
