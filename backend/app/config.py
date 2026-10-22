@@ -39,6 +39,11 @@ class Settings:
     # Офлайн-режим: внешние API не вызываются, только датасеты (для тестов и демо без сети).
     offline: bool = field(default_factory=lambda: os.getenv("OFFLINE_MODE", "0") == "1")
 
+    # --- Лимиты планов (антиспам; счётчики в Redis) ---
+    plan_limit_min: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_PER_MIN", "6")))
+    plan_limit_hour: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_PER_HOUR", "40")))
+    plan_limit_user_hour: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_USER_PER_HOUR", "60")))
+
     # --- Аккаунты ---
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", f"sqlite:///{ROOT_DIR / 'data' / 'amba.db'}"))
     jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", ""))

@@ -343,6 +343,23 @@ def save_trip(db: Session, user: User, query: str, result: dict) -> Trip:
     return trip
 
 
+def update_trip(db: Session, user: User, trip_id: str, query: str, result: dict) -> str:
+    """Доработанный в диалоге план заменяет сохранённую поездку (или сохраняется заново, если её удалили)."""
+    t = db.get(Trip, trip_id)
+    if not t or t.user_id != user.id:
+        return save_trip(db, user, query, result).id
+    plan = result.get("plan") or {}
+    days = plan.get("days") or []
+    t.title = str(plan.get("title") or t.title)[:200]
+    t.area, t.days = trip_area(result), len(days)
+    t.start_date = str((days[0] if days else {}).get("date") or "")[:10]
+    t.transport = str(plan.get("transport") or "")[:20]
+    t.converges = bool((result.get("check_summary") or {}).get("converges"))
+    t.result = result
+    db.commit()
+    return t.id
+
+
 def trip_out(t: Trip) -> dict:
     return {"id": t.id, "title": t.title, "query": t.query, "area": t.area, "start_date": t.start_date, "days": t.days,
             "transport": t.transport, "converges": t.converges, "favorite": t.favorite, "created_at": t.created_at.isoformat()}

@@ -3,7 +3,7 @@ import * as pages from "./pages.js";
 import { esc, humanDate, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, TOOL_LABELS } from "./render.js";
 
 const $ = (sel) => document.querySelector(sel);
-const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "" };
+const state = { result: null, map: null, layers: null, mascot: "", busy: false, view: readView(), query: "", conversation: null };
 
 function readView() {
   try { return localStorage.getItem("amba-view") === "logbook" ? "logbook" : "modern"; } catch { return "modern"; }
@@ -129,6 +129,7 @@ async function openTrip(id) {
     $("#trace").innerHTML = (t.result.trace || []).filter((x) => x.kind === "tool")
       .map((x) => `<li class="tr-tool"><b>${esc(TOOL_LABELS[x.name] || x.name)}</b></li>${x.summary ? `<li class="tr-result">${esc(x.summary)}</li>` : ""}`).join("");
     ensureMap();
+    renderChat(null);  // у сохранённой поездки диалога нет — для правок «Собрать заново»
     showResult(t.result);
     banner.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
@@ -185,6 +186,17 @@ function setupForm() {
   document.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
   setView(state.view);
   $("#print").addEventListener("click", () => window.print());
+  $("#chat-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = $("#chat-input");
+    const msg = input.value.trim();
+    input.value = "";
+    refine(msg);
+  });
+  $("#chat-chips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-say]");
+    if (b) refine(b.dataset.say);
+  });
 }
 
 function mascotHtml(cls) {
@@ -251,8 +263,21 @@ function drawMap(mp) {
   setTimeout(() => state.map.invalidateSize(), 50);
 }
 
+function renderChat(conv) {
+  const chat = $("#chat");
+  state.conversation = conv || null;
+  if (!conv) { chat.hidden = true; return; }
+  chat.hidden = false;
+  $("#chat-log").innerHTML = conv.turns.slice(2).map((t) => `<li class="msg ${t.role}">${esc(t.text)}</li>`).join("");
+  const can = conv.can_refine !== false;
+  $("#chat-form").hidden = !can;
+  $("#chat-chips").hidden = !can;
+  $("#chat-note").textContent = can ? "История диалога хранится сутки." : "Правок уже много — соберите новый план с учётом пожеланий.";
+}
+
 function showResult(result) {
   state.result = result;
+  if ("conversation" in result || result.status !== "plan") renderChat(result.conversation);
   const out = $("#result");
   $("#print").disabled = result.status !== "plan";
   if (result.status === "plan") {
@@ -283,9 +308,71 @@ function bindQuestions(result) {
   $("#q-skip").addEventListener("click", () => ask(state.query, []));
 }
 
+// Стрим плана: события агента → в «летопись», финальный результат возвращается. Ошибки HTTP — с текстом сервера.
+async function streamPlan(body) {
+  const resp = await fetch("/api/plan/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await freshAuthHeader()) },
+    body: JSON.stringify({ version: $("#version").value || undefined, ...body }),
+  });
+  if (!resp.ok || !resp.body) {
+    const data = await resp.json().catch(() => null);
+    throw new Error(typeof data?.detail === "string" ? data.detail : `Ошибка ${resp.status}`);
+  }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      const line = chunk.split("\n").find((l) => l.startsWith("data: "));
+      if (!line) continue;
+      const ev = JSON.parse(line.slice(6));
+      if (ev.type === "start") showIntents(ev.intents);
+      else if (ev.type === "result") return ev.result;
+      else addTrace(ev);
+    }
+  }
+  throw new Error("соединение оборвалось до результата");
+}
+
+async function refine(message) {
+  if (state.busy || !state.conversation || !message.trim()) return;
+  state.busy = true;
+  const log = $("#chat-log");
+  log.insertAdjacentHTML("beforeend", `<li class="msg user">${esc(message)}</li><li class="msg assistant pending">Амба дорабатывает план…</li>`);
+  $("#chat-form").querySelector("button").disabled = true;
+  $("#result").classList.add("refining");
+  $("#trace").innerHTML = "";
+  $("#trace-panel").open = true;
+  try {
+    const result = await streamPlan({ query: message, conversation_id: state.conversation.id });
+    if (result.status === "plan") {
+      showResult(result);
+      afterResult(result);
+    } else {
+      renderChat(result.conversation || state.conversation);  // отказ или ошибка — прежний план остаётся на экране
+      if (!result.conversation) log.insertAdjacentHTML("beforeend", `<li class="msg assistant err">${esc(result.error || "Не получилось")}</li>`);
+    }
+  } catch (e) {
+    log.querySelector(".pending")?.remove();
+    log.insertAdjacentHTML("beforeend", `<li class="msg assistant err">${esc(e.message)}</li>`);
+  } finally {
+    state.busy = false;
+    $("#result").classList.remove("refining");
+    $("#chat-form").querySelector("button").disabled = false;
+  }
+}
+
 async function ask(query, answers) {
   if (state.busy) return;
   state.query = query;
+  renderChat(null);
   state.busy = true;
   $("#submit").disabled = true;
   $("#ask").classList.add("busy");
@@ -298,33 +385,9 @@ async function ask(query, answers) {
   setTimeout(() => state.map?.invalidateSize(), 50);
   $("#workspace").scrollIntoView({ behavior: "smooth", block: "start" });
   try {
-    const resp = await fetch("/api/plan/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(await freshAuthHeader()) },
-      body: JSON.stringify({ query, version: $("#version").value || undefined, answers }),
-    });
-    if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    let got = false;
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buf.indexOf("\n\n")) >= 0) {
-        const chunk = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        const line = chunk.split("\n").find((l) => l.startsWith("data: "));
-        if (!line) continue;
-        const ev = JSON.parse(line.slice(6));
-        if (ev.type === "start") showIntents(ev.intents);
-        else if (ev.type === "result") { got = true; showResult(ev.result); afterResult(ev.result); }
-        else addTrace(ev);
-      }
-    }
-    if (!got) throw new Error("соединение оборвалось до результата");
+    const result = await streamPlan({ query, answers });
+    showResult(result);
+    afterResult(result);
   } catch (e) {
     showResult({ status: "error", error: e.message });
   } finally {
@@ -335,7 +398,9 @@ async function ask(query, answers) {
 }
 
 function afterResult(result) {
-  if (result.trip_id) {
+  if (result.trip_id && state.conversation && state.conversation.turns.length > 2) {
+    toast(`План обновлён в <a href="#/trips/${esc(result.trip_id)}">«Мои поездки»</a>`);
+  } else if (result.trip_id) {
     toast(`Сохранено в <a href="#/trips/${esc(result.trip_id)}">«Мои поездки»</a>`);
   } else if (result.status === "plan" && !currentUser() && !sessionStorage.getItem("amba-guest-hint")) {
     sessionStorage.setItem("amba-guest-hint", "1");

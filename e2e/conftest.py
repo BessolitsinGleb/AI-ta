@@ -10,6 +10,9 @@ import tempfile
 os.environ.setdefault("OPENROUTER_API_KEY", "")  # e2e идут на демо-планировщике
 os.environ.setdefault("OFFLINE_MODE", "1")
 os.environ["SMTP_PASSWORD"] = ""  # письма — в mailer.outbox
+os.environ["SMTP_USER"] = ""
+os.environ["PLAN_LIMIT_PER_MIN"] = "1000"  # все браузерные тесты идут с одного IP
+os.environ["REDIS_URL"] = ""
 os.environ["JWT_SECRET"] = "e2e-secret-" + "y" * 32
 os.environ["DATABASE_URL"] = "sqlite:///" + os.path.join(tempfile.mkdtemp(), "e2e.db")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))

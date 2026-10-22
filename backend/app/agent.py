@@ -16,7 +16,7 @@ from typing import Any, Awaitable, Callable
 
 from .config import TZ, settings
 from .guardrails import precheck
-from .intents import parse_intents
+from .intents import merge_intents, parse_intents
 from .llm import ChatModel, LLMError, OpenRouterLLM, Usage
 from .prompts import ASK_TOOL, FINISH_TOOLS, LAST_STEPS_NUDGE, REPAIR_NUDGE, TRUNCATED_NUDGE, baseline_prompt, full_prompt
 from .tools import ALL_TOOLS, ToolContext
@@ -186,6 +186,7 @@ async def run_agent(
     answers: list[dict] | None = None,
     allow_questions: bool = True,
     profile_hint: str = "",
+    refine: dict | None = None,
 ) -> dict:
     emit = on_event or _noop
     t0 = time.perf_counter()
@@ -194,7 +195,13 @@ async def run_agent(
     already_asked = answers is not None  # пустой список = «пропустить вопросы»
     answers = [a for a in (answers or []) if str(a.get("answer") or "").strip()]
     answers_text = "\n".join(f"- {a.get('question', '')}: {a['answer']}" for a in answers)
-    intents = parse_intents(f"{query}\n{answers_text}", today)
+    if refine:  # доработка: query — просьба клиента, исходный запрос и ответы — из диалога
+        answers = [a for a in (refine.get("answers") or []) if str(a.get("answer") or "").strip()]
+        answers_text = "\n".join(f"- {a.get('question', '')}: {a['answer']}" for a in answers)
+        already_asked = True
+        intents = merge_intents(parse_intents(f"{refine['query']}\n{answers_text}", today), parse_intents(query, today))
+    else:
+        intents = parse_intents(f"{query}\n{answers_text}", today)
     usage = Usage()
     trace: list[dict] = []
     tools_called: list[str] = []
@@ -225,7 +232,17 @@ async def run_agent(
             return finish("error", error=str(exc))
 
     system = full_prompt(today) if ver.prompt == "full" else baseline_prompt(today)
-    user_text = query[:2000] + (f"\n\nУточнения клиента:\n{answers_text}" if answers_text else "")
+    if refine:
+        earlier = "".join(f"\n- {t}" for t in refine.get("earlier") or [])
+        user_text = (f"Исходный запрос клиента: {refine['query'][:2000]}"
+                     + (f"\n\nУточнения клиента:\n{answers_text}" if answers_text else "")
+                     + f"\n\nТекущий план (кратко, JSON): {refine['plan_json'][:6000]}"
+                     + (f"\n\nРанее клиент уже просил:{earlier}" if earlier else "")
+                     + f"\n\nКлиент просит изменить план: «{query[:1000]}»\n"
+                     "Измени план под эту просьбу, остальное по возможности сохрани. Для новых мест, кафе, маршрута или погоды "
+                     "вызови тулы, затем submit_plan с ПОЛНЫМ обновлённым планом. Если просьба не про поездку по Приморью — decline_request.")
+    else:
+        user_text = query[:2000] + (f"\n\nУточнения клиента:\n{answers_text}" if answers_text else "")
     if profile_hint:  # анкета из профиля: учитываем и не переспрашиваем
         user_text += f"\n\nИз профиля клиента (учитывай, не переспрашивай): {profile_hint[:600]}"
     messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": user_text}]

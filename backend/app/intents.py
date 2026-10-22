@@ -139,3 +139,16 @@ def parse_intents(query: str, today: date) -> Intents:
     it.chips.extend(it.interests)
     it.chips.append("Приморье")
     return it
+
+
+def merge_intents(base: Intents, change: Intents) -> Intents:
+    """Интенты уточнения поверх исходного запроса: «давай на автобусе» меняет транспорт, остальное остаётся."""
+    merged = Intents(**base.dict())
+    for f in ("days", "max_days", "overnight", "transport", "start_date", "end_date"):
+        val = getattr(change, f)
+        if val is not None:
+            setattr(merged, f, val)
+    merged.weekend = base.weekend or change.weekend
+    merged.interests = sorted(set(base.interests) | set(change.interests))
+    merged.chips = list(dict.fromkeys(base.chips[:-1] + [c for c in change.chips if c != "Приморье"] + ["Приморье"]))
+    return merged

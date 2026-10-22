@@ -13,8 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from fastapi.concurrency import run_in_threadpool
 
-from . import accounts
-from .accounts import optional_user, profile_hint, save_trip
+from . import accounts, dialog, ratelimit
+from .accounts import optional_user, profile_hint, save_trip, update_trip
+from .store import store
 from .agent import run_agent, today_local, versions
 from .db import SessionLocal, init_db
 from .config import FRONTEND_DIR, settings
@@ -78,6 +79,7 @@ class PlanRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
     version: str | None = None
     answers: list[Answer] | None = Field(None, max_length=4)
+    conversation_id: str | None = Field(None, pattern=r"^[a-f0-9]{32}$")  # доработка плана в диалоге
 
     def answer_dicts(self) -> list[dict] | None:
         return [a.model_dump() for a in self.answers] if self.answers is not None else None
@@ -86,6 +88,7 @@ class PlanRequest(BaseModel):
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "llm": "openrouter" if settings.openrouter_api_key else "demo",
+            "store": store.kind if store.ping() else f"{store.kind}-down",
             "default_version": settings.default_version, "today": today_local().isoformat()}
 
 
@@ -109,17 +112,6 @@ async def _account(request: Request):
     return await run_in_threadpool(load)
 
 
-async def _remember(user, query: str, result: dict) -> dict:
-    """План залогиненного пользователя сохраняется в «Мои поездки»."""
-    if user is None or result.get("status") != "plan":
-        return result
-    def store():
-        with SessionLocal() as db:
-            return save_trip(db, db.merge(user), query, result).id
-    result["trip_id"] = await run_in_threadpool(store)
-    return result
-
-
 def _version(v: str | None) -> str:
     key = v or settings.default_version
     if key not in versions():
@@ -127,18 +119,63 @@ def _version(v: str | None) -> str:
     return key
 
 
+def _limit_plans(request: Request, user) -> None:
+    """Защита от спама: каждый план стоит денег. Счётчики в Redis — общие для всех копий приложения."""
+    ip = ratelimit.client_ip(request)
+    ratelimit.check(f"plan:ip:{ip}:min", settings.plan_limit_min, 60)
+    ratelimit.check(f"plan:ip:{ip}:hour", settings.plan_limit_hour, 3600)
+    if user is not None:
+        ratelimit.check(f"plan:user:{user.id}:hour", settings.plan_limit_user_hour, 3600)
+
+
+async def _prepare(req: PlanRequest, request: Request):
+    """Пользователь, подсказка из анкеты и (для доработки) диалог. Всё, что может отказать, — до старта агента."""
+    user, hint = await _account(request)
+    _limit_plans(request, user)
+    conv = None
+    if req.conversation_id:
+        conv = dialog.load(req.conversation_id, user.id if user else None)
+        if conv is None:
+            raise HTTPException(404, "Диалог устарел или не найден — соберите план заново")
+        if not dialog.public(conv)["can_refine"]:
+            raise HTTPException(409, "Это уже много правок — соберите новый план с учётом пожеланий")
+    return user, hint, conv
+
+
+async def _run(req: PlanRequest, version: str, user, hint: str, conv: dict | None, on_event=None) -> dict:
+    refine = dialog.refine_context(conv) if conv else None
+    result = await run_agent(req.query, version, on_event=on_event, answers=req.answer_dicts(), profile_hint=hint, refine=refine)
+    if result.get("status") == "plan" and user is not None:
+        base_query = conv["query"] if conv else req.query
+
+        def store_trip():
+            with SessionLocal() as db:
+                u = db.merge(user)
+                if conv and conv.get("trip_id"):
+                    return update_trip(db, u, conv["trip_id"], base_query, result)
+                return save_trip(db, u, base_query, result).id
+        result["trip_id"] = await run_in_threadpool(store_trip)
+    if conv:
+        conv = dialog.record(conv, req.query, result)
+    elif result.get("status") == "plan":
+        conv = dialog.start(user.id if user else None, req.query, req.answer_dicts(), result)
+    if conv:
+        result["conversation"] = dialog.public(conv)
+    return result
+
+
 @app.post("/api/plan")
 async def plan(req: PlanRequest, request: Request) -> dict:
+    version = _version(req.version)
+    user, hint, conv = await _prepare(req, request)
     async with _slots:
-        user, hint = await _account(request)
-        result = await run_agent(req.query, _version(req.version), answers=req.answer_dicts(), profile_hint=hint)
-        return await _remember(user, req.query, result)
+        return await _run(req, version, user, hint, conv)
 
 
 @app.post("/api/plan/stream")
 async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
     version = _version(req.version)
-    user, hint = await _account(request)
+    user, hint, conv = await _prepare(req, request)  # 429/404 — обычным JSON, до открытия стрима
     queue: asyncio.Queue = asyncio.Queue()
 
     async def on_event(ev: dict) -> None:
@@ -147,8 +184,7 @@ async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
     async def worker() -> None:
         async with _slots:
             try:
-                result = await run_agent(req.query, version, on_event=on_event, answers=req.answer_dicts(), profile_hint=hint)
-                result = await _remember(user, req.query, result)
+                result = await _run(req, version, user, hint, conv, on_event)
                 await queue.put({"type": "result", "result": result})
             except Exception as exc:  # pragma: no cover — страховка, чтобы стрим не повис
                 await queue.put({"type": "result", "result": {"status": "error", "error": f"{type(exc).__name__}: {exc}"}})

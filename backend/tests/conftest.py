@@ -6,6 +6,8 @@ from pathlib import Path
 os.environ["OFFLINE_MODE"] = "1"
 os.environ["OPENROUTER_API_KEY"] = ""
 os.environ["SMTP_PASSWORD"] = ""  # письма не уходят, а попадают в mailer.outbox
+os.environ["SMTP_USER"] = ""
+os.environ["REDIS_URL"] = ""  # тесты — на памяти; Redis проверяется отдельно через fakeredis
 os.environ["JWT_SECRET"] = "test-secret-" + "x" * 32
 os.environ["DATABASE_URL"] = "sqlite:///" + str(Path(__file__).parent / ".test.db")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

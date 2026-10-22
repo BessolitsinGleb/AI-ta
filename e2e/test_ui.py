@@ -68,3 +68,18 @@ def test_mobile_has_no_horizontal_scroll(browser, base_url):
     page.wait_for_selector("#result .plan", timeout=30000)
     assert page.evaluate("document.documentElement.scrollWidth") <= 375
     page.close()
+
+
+def test_refine_plan_in_chat(page):
+    page.goto(page.url.split("#")[0] + "#/")
+    page.fill("#q", "В субботу на автобусе в Находку на один день")
+    page.click("#submit")
+    page.wait_for_selector("#result .plan h2", timeout=30000)
+    assert page.locator("#chat").is_visible()
+    page.fill("#chat-input", "давай лучше на электричке")
+    page.click("#chat-form button[type=submit]")
+    page.wait_for_selector("#chat-log .msg.assistant:not(.pending)", timeout=30000)
+    assert page.locator("#chat-log .msg.user").count() == 1
+    assert "электричк" in page.inner_text(".facts").lower()
+    page.click("#chat-chips [data-say='Сделай подешевле']")
+    page.wait_for_function("document.querySelectorAll('#chat-log .msg.assistant:not(.pending)').length === 2", timeout=30000)

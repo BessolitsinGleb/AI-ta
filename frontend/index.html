@@ -78,6 +78,23 @@
           </div>
         </div>
         <div id="result" aria-live="polite"></div>
+        <section class="chat" id="chat" hidden aria-label="Доработать план">
+          <h3>Что поменять в плане?</h3>
+          <ol class="chat-log" id="chat-log"></ol>
+          <div class="chips chat-chips" id="chat-chips">
+            <button type="button" class="chip" data-say="Сделай подешевле">Подешевле</button>
+            <button type="button" class="chip" data-say="Меньше переездов, спокойнее темп">Меньше переездов</button>
+            <button type="button" class="chip" data-say="Добавь больше моря и пляжей">Больше моря</button>
+            <button type="button" class="chip" data-say="Добавь музеи и историю">Больше истории</button>
+            <button type="button" class="chip" data-say="Перенеси на воскресенье">На воскресенье</button>
+          </div>
+          <form class="chat-form" id="chat-form" autocomplete="off">
+            <label for="chat-input" class="sr-only">Ваше пожелание</label>
+            <input id="chat-input" maxlength="500" placeholder="Например: убери музей и добавь ужин с морепродуктами">
+            <button class="go small" type="submit">Отправить</button>
+          </form>
+          <p class="chat-note" id="chat-note"></p>
+        </section>
       </div>
       <aside class="col-side">
         <div class="panel map-panel">

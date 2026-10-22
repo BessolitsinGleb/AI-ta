@@ -4,8 +4,25 @@ services:
     image: amba-travel-agent:latest
     container_name: amba
     env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0   # лимиты запросов и история диалогов
     ports:
       - "${PORT:-8000}:8000"
     volumes:
       - ./data:/app/data   # база аккаунтов и поездок переживает пересборку
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: amba-redis
+    # Только память: лимиты и диалоги живут минуты и часы, на диск их писать незачем.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "volatile-ttl"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped

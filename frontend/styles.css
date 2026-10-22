@@ -373,3 +373,23 @@ textarea:focus { outline: none; }
   .trip { grid-template-columns: minmax(0, 1fr) auto auto; }
   .trip-badge { grid-column: 1; justify-self: start; }
 }
+
+/* ---------- Доработка плана в диалоге ---------- */
+.chat { margin-top: 18px; background: var(--surface); border-radius: var(--r-lg); padding: 20px; }
+.chat h3 { margin: 0 0 12px; font: 700 18px var(--display); }
+.chat-log { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chat-log:empty { display: none; }
+.msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; }
+.msg.user { align-self: flex-end; background: var(--sea); color: #fff; border-bottom-right-radius: 4px; }
+.msg.assistant { align-self: flex-start; background: var(--fog); color: var(--sea); border-bottom-left-radius: 4px; }
+.msg.pending { color: var(--sea-3); font-style: italic; }
+.msg.err { background: var(--bad-soft); color: var(--bad); }
+.chat-chips { margin-bottom: 10px; }
+.chat-form { display: flex; gap: 8px; }
+.chat-form input { flex: 1; min-width: 0; font: 500 16px var(--font); color: var(--sea); padding: 11px 14px; border: 1.5px solid var(--line); border-radius: 12px; }
+.chat-form input:focus { outline: none; border-color: var(--tiger); box-shadow: 0 0 0 3px rgba(240, 100, 30, .2); }
+.chat-note { margin: 8px 0 0; font-size: 13px; color: var(--sea-3); }
+#result.refining { opacity: .55; transition: opacity .2s; pointer-events: none; }
+@media print { .chat { display: none !important; } }
+.toolbar-actions { flex-wrap: wrap; }
+.col-main, .col-side { min-width: 0; }

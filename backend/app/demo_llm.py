@@ -56,6 +56,10 @@ class DemoLLM:
         m = re.search(r"Сегодня (\d{4}-\d{2}-\d{2})", system)
         today = date.fromisoformat(m.group(1)) if m else date.today()
         query = next(x["content"] for x in messages if x["role"] == "user")
+        orig = re.search(r"Исходный запрос клиента: (.+)", query)
+        change = re.search(r"Клиент просит изменить план: «(.+?)»", query, re.S)
+        if orig and change:  # доработка: планируем по исходному запросу с учётом просьбы, без JSON прошлого плана
+            query = f"{orig.group(1)}\n{change.group(1)}"
         it = parse_intents(query, today)
         names: dict[str, str] = {}
         results: dict[str, list] = {}
