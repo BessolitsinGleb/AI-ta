@@ -5,7 +5,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PORT="${PORT:-8000}"
-IP="${LAN_IP:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)}"
+# Wi-Fi (en0/en1), иначе интерфейс маршрута по умолчанию — например, телефон по USB. VPN-туннели (utun) не берём.
+default_ip() {
+  local ifc
+  ifc=$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')
+  case "$ifc" in ""|utun*|ipsec*|ppp*) return 1 ;; esac
+  ipconfig getifaddr "$ifc"
+}
+IP="${LAN_IP:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || default_ip || true)}"
 if [ -z "$IP" ]; then
   echo "Не нашёл IP ноутбука: подключитесь к Wi-Fi (или раздайте с телефона) либо задайте LAN_IP=..." >&2
   exit 1
