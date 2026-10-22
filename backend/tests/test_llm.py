@@ -54,3 +54,16 @@ async def test_no_retry_on_401(monkeypatch):
 
 async def _no_sleep(*_):
     return None
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_disconnects_are_retried_then_explained(monkeypatch):
+    monkeypatch.setattr("app.llm.asyncio.sleep", _no_sleep)
+    route = respx.post(URL).mock(side_effect=[httpx.RemoteProtocolError("Server disconnected without sending a response.")] * 5
+                                 + [httpx.Response(200, json=ok_body())])
+    assert (await OpenRouterLLM("m", api_key="k").chat([], [])).message  # пять обрывов подряд — всё равно ответ
+    assert route.call_count == 6
+    respx.post(URL).mock(side_effect=httpx.RemoteProtocolError("Server disconnected without sending a response."))
+    with pytest.raises(LLMError, match="временно не отвечает"):
+        await OpenRouterLLM("m", api_key="k").chat([], [])

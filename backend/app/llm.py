@@ -81,7 +81,7 @@ class OpenRouterLLM:
         }
         last_err: Exception | None = None
         async with httpx.AsyncClient(timeout=settings.llm_timeout_s) as client:
-            for attempt in range(4):
+            for attempt in range(6):  # шлюз иногда рвёт соединение — переждём до ~40 с, прежде чем сдаться
                 try:
                     resp = await client.post(f"{settings.openrouter_base_url}/chat/completions", json=body, headers=headers)
                     if resp.status_code in (429, 500, 502, 503, 504):
@@ -100,7 +100,9 @@ class OpenRouterLLM:
                     if isinstance(exc, LLMError) and "OpenRouter 4" in str(exc) and "429" not in str(exc):
                         break  # 400/401/402/403 — повторять бессмысленно
                     # бесплатные модели часто отвечают 429 — ждём дольше
-                    await asyncio.sleep((6 if "429" in str(exc) else 1.5) * (attempt + 1))
+                    await asyncio.sleep((6 if "429" in str(exc) else 2.5) * (attempt + 1))
+        if isinstance(last_err, httpx.TransportError):  # обрыв связи, а не ответ модели — понятными словами
+            raise LLMError("Модель временно не отвечает (обрыв связи с сервисом). Попробуйте ещё раз через минуту.")
         raise LLMError(str(last_err))
 
 
