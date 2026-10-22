@@ -11,6 +11,8 @@ const ROOT = path.resolve(__dirname, "..");
 const IMG = path.join(ROOT, "docs", "img");
 const OUT = path.join(__dirname, "Amba_Travel_AI.pptx");
 const DEMO_URL = "https://amba-production-3ab7.up.railway.app";
+// Финальный QR — пасхалка: клип на Rutube, открывается и с VPN, и без.
+const FINAL_QR_URL = "https://rutube.ru/video/c6cc4d620b1d4338901770a44b3e82f4/";
 const REPO_URL = "github.com/BessolitsinGleb/AI-ta";
 
 const THEME = {
@@ -47,7 +49,9 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const [a1, a2, a3] = evals.map((e) => e.aggregate);
   const team = JSON.parse(fs.readFileSync(path.join(__dirname, "team.json"), "utf8"));
   const mascot = await png(path.join(ROOT, "frontend", "assets", "amba.svg"), 900);
-  const qr = "image/png;base64," + (await QRCode.toBuffer(DEMO_URL, { width: 600, margin: 1, color: { dark: "#0F2D3A", light: "#FFFFFF" } })).toString("base64");
+  const qrOf = async (url) => "image/png;base64," + (await QRCode.toBuffer(url, { width: 600, margin: 1, color: { dark: "#0F2D3A", light: "#FFFFFF" } })).toString("base64");
+  const qr = await qrOf(DEMO_URL);
+  const qrFinal = await qrOf(FINAL_QR_URL);
 
   const pres = new pptxgen();
   pres.layout = "LAYOUT_16x9"; // 10 × 5.625 in
@@ -350,7 +354,7 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     s.addText("Вопросы? И в путь!", { placeholder: "title" });
     s.addText("Попробуйте Амбу по QR-коду — план поездки по Приморью за минуту", { placeholder: "body" });
     s.addImage({ data: mascot, x: 6.4, y: 0.6, w: 2.0, h: 2.17, objectName: "mascot-final" });
-    s.addImage({ data: qr, x: 7.65, y: 2.95, w: 1.75, h: 1.75, objectName: "qr-final" });
+    s.addImage({ data: qrFinal, x: 7.65, y: 2.95, w: 1.75, h: 1.75, objectName: "qr-final" });
     txt(s, "Хорошей дороги!", { x: 6.2, y: 4.85, w: 3.2, h: 0.35, italic: true, fontSize: 13, color: H.accent2, align: "right" });
     speak(s, "Финал", 10, "Спасибо! Готовы ответить на вопросы. Хорошей дороги!");
   }
