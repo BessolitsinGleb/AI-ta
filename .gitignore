@@ -10,7 +10,7 @@ slide-*.jpg
 .DS_Store
 .claude/
 .test.db
-data/
+/data/
 
 # lock-файлы Office
 ~$*
