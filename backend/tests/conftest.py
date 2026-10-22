@@ -5,6 +5,7 @@ from pathlib import Path
 # Тесты не ходят в сеть и не тратят ключ: офлайн-режим и пустой ключ выставляются до импорта приложения.
 os.environ["OFFLINE_MODE"] = "1"
 os.environ["OPENROUTER_API_KEY"] = ""
+os.environ["OPENROUTER_BASE_URL"] = "https://openrouter.ai/api/v1"  # не брать шлюз из локального .env
 os.environ["SMTP_PASSWORD"] = ""  # письма не уходят, а попадают в mailer.outbox
 os.environ["SMTP_USER"] = ""
 os.environ["REDIS_URL"] = ""  # тесты — на памяти; Redis проверяется отдельно через fakeredis

@@ -55,7 +55,11 @@ async def limit_body(request: Request, call_next):
             return JSONResponse({"detail": "Нужен заголовок Content-Length"}, status_code=411)
         if int(size) > MAX_BODY_BYTES:
             return JSONResponse({"detail": f"Запрос слишком большой: максимум {MAX_BODY_BYTES // 1024} КБ"}, status_code=413)
-    return await call_next(request)
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        # фронт без сборщика и хешей в именах: пусть браузер сверяет файлы, иначе после обновления живёт старый app.js
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
 
 
 @app.exception_handler(RequestValidationError)

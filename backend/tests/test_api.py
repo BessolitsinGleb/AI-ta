@@ -71,3 +71,9 @@ def test_body_size_limit():
 def test_demo_metrics_marked_as_estimate():
     body = client.post("/api/plan", json={"query": "В субботу на автобусе в Находку на один день", "answers": []}).json()
     assert body["metrics"]["estimated"] is True
+
+
+def test_frontend_is_revalidated():
+    for path in ("/", "/static/js/app.js"):
+        assert client.get(path).headers["cache-control"] == "no-cache"
+    assert "no-cache" not in client.get("/api/health").headers.get("cache-control", "")
