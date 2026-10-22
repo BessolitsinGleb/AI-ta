@@ -99,3 +99,29 @@ async def test_demo_asks_about_cuisine_and_uses_answer():
     assert r["status"] == "plan"
     food = [i for d in r["plan"]["days"] for i in d["items"] if i["type"] == "food"]
     assert food and all(i.get("links") for i in food)
+
+
+def test_dataset_places_get_coordinates_for_map():
+    from app.agent import fill_coords
+    from app.tools.places import get_place
+
+    plan = {"days": [{"items": [{"type": "place", "name": "Подлодка", "place_id": "vl_s56"}, {"type": "note", "name": "Отдых"}]}]}
+    fill_coords(plan)
+    place, note = plan["days"][0]["items"]
+    assert (place["lat"], place["lon"]) == (get_place("vl_s56")["lat"], get_place("vl_s56")["lon"]) and "lat" not in note
+
+
+def test_ip_limits_scale_behind_nat(monkeypatch):
+    from dataclasses import replace
+
+    from fastapi import HTTPException
+    from starlette.requests import Request
+
+    from app import ratelimit
+    req = Request({"type": "http", "client": ("151.101.128.223", 1), "headers": []})
+    monkeypatch.setattr(ratelimit, "settings", replace(ratelimit.settings, ip_limit_scale=3))
+    for _ in range(15):  # 5 × 3 — за общим NAT зал не упирается в лимит одного человека
+        ratelimit.check_ip(req, "register", 5, 3600)
+    with pytest.raises(HTTPException):
+        ratelimit.check_ip(req, "register", 5, 3600)
+

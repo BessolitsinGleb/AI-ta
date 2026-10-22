@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import socket
 import time
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -12,13 +15,46 @@ TTL_S = 12 * 3600
 _seen: dict[str, tuple[float, bool | None]] = {}
 
 
+async def _resolve(host: str) -> list[str]:
+    infos = await asyncio.get_running_loop().getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    return [info[4][0] for info in infos]
+
+
+async def _public(url: str) -> bool | None:
+    """Адрес из интернета, а не внутренняя сеть сервера: ссылки приходят из OSM и от модели — их не должно хватать
+    на запрос к localhost, Redis или метаданным облака. None — домен не резолвится (значит, сайта нет)."""
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname or parts.port not in (None, 80, 443):
+        return False
+    try:
+        ip_literal = ipaddress.ip_address(parts.hostname)
+    except ValueError:
+        ip_literal = None
+    if ip_literal is not None:
+        return ip_literal.is_global
+    try:
+        addrs = await _resolve(parts.hostname)
+    except socket.gaierror as exc:
+        # «такого домена нет» — сайт мёртв; временный сбой DNS (нет сети) — не повод считать кафе закрытым
+        return None if exc.errno in (socket.EAI_NONAME, getattr(socket, "EAI_NODATA", socket.EAI_NONAME)) else False
+    return bool(addrs) and all(ipaddress.ip_address(a).is_global for a in addrs)
+
+
 async def alive(url: str, timeout: float = 5.0) -> bool | None:
     """True — открывается; False — домена нет, соединение отклонено или 404/410; None — не понять (403, 429, 5xx, таймаут)."""
     hit = _seen.get(url)
     if hit and hit[0] > time.time():
         return hit[1]
+    public = await _public(url)
+    if public is None:  # DNS не знает домен
+        _seen[url] = (time.time() + TTL_S, False)
+        return False
+    if not public:  # внутренний адрес, чужой порт или сбой DNS — не ходим, ссылку не показываем
+        _seen[url] = (time.time() + TTL_S, None)
+        return None
     try:
-        async with get_client().stream("GET", url, timeout=timeout) as resp:  # тело не качаем — хватает статуса
+        # тело не качаем — хватает статуса; редиректы не идём: 3xx уже значит «сайт жив», а цель могла бы быть внутренней
+        async with get_client().stream("GET", url, timeout=timeout, follow_redirects=False) as resp:
             code = resp.status_code
         verdict = True if code < 400 else False if code in (404, 410) else None
     except (httpx.ConnectError, httpx.UnsupportedProtocol, httpx.InvalidURL):

@@ -87,8 +87,8 @@ def describe_tool(name: str, res: dict) -> str:
         src = {"osrm": "OSRM", "estimate": "оценка"}.get(res.get("source"), res.get("source"))
         return f"{res.get('distance_km')} км, {res.get('duration_h')} ч {mode} ({src})"
     if name == "find_fuel_stations":
-        return f"АЗС по пути: {len(res.get('stations', []))}, с {res.get('fuel')}: {res.get('stations_with_fuel')}, " \
-               f"макс. перегон {res.get('max_gap_km')} км"
+        return f"АЗС по пути: {len(res.get('stations', []))}, {res.get('fuel')} точно есть на {res.get('confirmed', 0)} " \
+               f"(у остальных в OSM не указано), макс. перегон {res.get('max_gap_km')} км"
     if name == "find_lodging":
         free = [o["name"] for o in res.get("options", []) if o.get("available")]
         return f"свободно вариантов: {len(free)}" + (f" — {free[0]}" if free else "")
@@ -342,7 +342,7 @@ async def run_agent(
                 await emit({"type": "tool", "name": name, "args": args.get("category", "")})
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": "ok"})
                 return finish("declined", refusal={"category": args.get("category", "off_topic"),
-                                                   "message": args.get("message") or "Сие не о странствиях по Приморью.",
+                                                   "message": args.get("message") or "Это не про поездку по Приморью.",
                                                    "by": "llm"})
             plan = _extract_plan(args)
             await emit({"type": "tool", "name": "submit_plan", "args": f"дней: {len(plan.get('days') or [])}"})
@@ -400,7 +400,17 @@ def attach_links(plan: dict) -> None:
             lod["links"] = [{"title": "Гостиницы рядом", "url": yandex_maps("гостиницы", lod.get("lat"), lod.get("lon"), zoom=14)}]
 
 
+def fill_coords(plan: dict) -> None:
+    """Места из датасета модель иногда ставит только по place_id: берём координаты оттуда — для карты и адреса."""
+    for day in plan.get("days") or []:
+        for it in day.get("items") or []:
+            place = get_place(str(it.get("place_id") or ""))
+            if place and (it.get("lat") is None or it.get("lon") is None):
+                it["lat"], it["lon"] = place["lat"], place["lon"]
+
+
 async def _finalize(plan: dict, checks: list, ctx: ToolContext, finish, emit: EventCb) -> dict:
+    fill_coords(plan)
     attach_links(plan)
     # маршрут, адреса и проверка ссылок «Сайт» — параллельно; неоткрывающиеся ссылки из плана убираем
     mp, _, _ = await asyncio.gather(enrich_map(plan, ctx), add_addresses(plan, ctx),

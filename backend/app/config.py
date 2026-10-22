@@ -45,6 +45,10 @@ class Settings:
     plan_limit_user_hour: int = field(default_factory=lambda: int(os.getenv("PLAN_LIMIT_USER_PER_HOUR", "60")))
     # Планы строит модель за деньги — только для вошедших. REQUIRE_LOGIN=0 открывает поиск гостям (тесты, локальная отладка).
     require_login: bool = field(default_factory=lambda: os.getenv("REQUIRE_LOGIN", "1") == "1")
+    # За NAT (Docker Desktop на Mac, общий Wi-Fi площадки) все клиенты приходят с одного адреса —
+    # лимиты «на IP» умножаются на это число. Лимиты на пользователя и на почту не меняются.
+    plan_parallel: int = field(default_factory=lambda: max(1, int(os.getenv("PLAN_PARALLEL", "8"))))
+    ip_limit_scale: int = field(default_factory=lambda: max(1, int(os.getenv("IP_LIMIT_SCALE", "1"))))
 
     # --- Аккаунты ---
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", f"sqlite:///{ROOT_DIR / 'data' / 'amba.db'}"))

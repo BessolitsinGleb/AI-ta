@@ -12,6 +12,13 @@ def _fresh():
 
 
 @pytest.mark.asyncio
+async def test_internal_addresses_are_never_fetched():
+    for url in ("http://127.0.0.1:8000/api/health", "http://169.254.169.254/latest/meta-data", "http://10.0.0.1/",
+                "http://localhost/", "https://example.org:6379/", "ftp://example.org/", "file:///etc/passwd"):
+        assert await linkcheck._public(url) is not True, url
+
+
+@pytest.mark.asyncio
 @respx.mock
 async def test_link_alive_verdicts():
     respx.get("https://ok.example/").mock(return_value=httpx.Response(200))

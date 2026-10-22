@@ -129,6 +129,9 @@ CurrentUser = Annotated[User, Depends(current_user)]
 
 # ---------- сессии ----------
 
+# Сколько после ротации старый refresh-токен ещё принимается: параллельные вкладки шлют одну и ту же cookie
+REUSE_GRACE = timedelta(seconds=30)
+
 def _issue(response: Response, user: User, db: Session, request: Request) -> dict:
     sess = RefreshSession(user_id=user.id, expires_at=utcnow() + timedelta(days=settings.refresh_ttl_days),
                           user_agent=request.headers.get("user-agent", "")[:200])
@@ -142,8 +145,9 @@ def _issue(response: Response, user: User, db: Session, request: Request) -> dic
 
 def _revoke_all(user: User, db: Session) -> None:
     now = utcnow()
-    for s in db.scalars(select(RefreshSession).where(RefreshSession.user_id == user.id, RefreshSession.revoked_at.is_(None))):
-        s.revoked_at = now
+    for s in db.scalars(select(RefreshSession).where(RefreshSession.user_id == user.id)):
+        s.revoked_at = s.revoked_at or now
+        s.rotated_at = None  # после выхода отовсюду старые токены не принимаются и от «соседних вкладок»
 
 
 def _aware(dt: datetime) -> datetime:
@@ -154,7 +158,7 @@ def _aware(dt: datetime) -> datetime:
 
 @router.post("/auth/register", status_code=202)
 async def register(body: RegisterIn, request: Request, db: DB) -> dict:
-    ratelimit.check(f"register:{ratelimit.client_ip(request)}", 5, 3600)
+    ratelimit.check_ip(request, "register", 5, 3600)
     email = norm_email(body.email)
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
@@ -188,7 +192,7 @@ def verify(token: str, request: Request, db: DB):
 
 @router.post("/auth/resend", status_code=202)
 async def resend(body: EmailIn, request: Request, db: DB) -> dict:
-    ratelimit.check(f"resend:{ratelimit.client_ip(request)}", 10, 3600)
+    ratelimit.check_ip(request, "resend", 10, 3600)
     email = norm_email(body.email)
     user = db.scalar(select(User).where(User.email == email))
     if user and not user.verified:
@@ -201,7 +205,7 @@ async def resend(body: EmailIn, request: Request, db: DB) -> dict:
 @router.post("/auth/login")
 def login(body: LoginIn, request: Request, response: Response, db: DB) -> dict:
     email = norm_email(body.email)
-    ratelimit.check(f"login:{ratelimit.client_ip(request)}", 10, 60)
+    ratelimit.check_ip(request, "login", 10, 60)
     ratelimit.check(f"login:{email}", 20, 3600)
     user = db.scalar(select(User).where(User.email == email))
     ok = security.verify_password(body.password, user.password_hash if user else security.DUMMY_HASH)
@@ -214,7 +218,7 @@ def login(body: LoginIn, request: Request, response: Response, db: DB) -> dict:
 
 @router.post("/auth/refresh")
 def refresh(request: Request, response: Response, db: DB) -> dict:
-    ratelimit.check(f"refresh:{ratelimit.client_ip(request)}", 60, 60)
+    ratelimit.check_ip(request, "refresh", 60, 60)
     raw = request.cookies.get(COOKIE)
     try:
         data = security.decode(raw or "", "refresh")
@@ -224,6 +228,8 @@ def refresh(request: Request, response: Response, db: DB) -> dict:
     user = db.get(User, data["sub"])
     if not sess or not user or sess.user_id != user.id:
         raise HTTPException(401, "Сессия истекла, войдите снова")
+    if sess.rotated_at is not None and utcnow() - _aware(sess.rotated_at) < REUSE_GRACE:
+        return _issue(response, user, db, request)  # две вкладки обновились одновременно — это не кража
     if sess.revoked_at is not None:
         _revoke_all(user, db)  # старый токен использован повторно — возможна кража: гасим все сессии
         db.commit()
@@ -231,7 +237,7 @@ def refresh(request: Request, response: Response, db: DB) -> dict:
         raise HTTPException(401, "Сессия завершена, войдите снова")
     if _aware(sess.expires_at) < utcnow():
         raise HTTPException(401, "Сессия истекла, войдите снова")
-    sess.revoked_at = utcnow()  # ротация: каждый refresh-токен одноразовый
+    sess.revoked_at = sess.rotated_at = utcnow()  # ротация: каждый refresh-токен одноразовый
     return _issue(response, user, db, request)
 
 
@@ -240,8 +246,9 @@ def logout(request: Request, response: Response, db: DB) -> dict:
     try:
         data = security.decode(request.cookies.get(COOKIE, ""), "refresh")
         sess = db.get(RefreshSession, data.get("jti"))
-        if sess and sess.revoked_at is None:
-            sess.revoked_at = utcnow()
+        if sess:
+            sess.revoked_at = sess.revoked_at or utcnow()
+            sess.rotated_at = None
             db.commit()
     except jwt.PyJWTError:
         pass
@@ -251,7 +258,7 @@ def logout(request: Request, response: Response, db: DB) -> dict:
 
 @router.post("/auth/forgot", status_code=202)
 async def forgot(body: EmailIn, request: Request, db: DB) -> dict:
-    ratelimit.check(f"forgot:{ratelimit.client_ip(request)}", 10, 3600)
+    ratelimit.check_ip(request, "forgot", 10, 3600)
     email = norm_email(body.email)
     user = db.scalar(select(User).where(User.email == email))
     if user and user.verified:
@@ -263,7 +270,7 @@ async def forgot(body: EmailIn, request: Request, db: DB) -> dict:
 
 @router.post("/auth/reset")
 def reset(body: ResetIn, request: Request, db: DB) -> dict:
-    ratelimit.check(f"reset:{ratelimit.client_ip(request)}", 10, 3600)
+    ratelimit.check_ip(request, "reset", 10, 3600)
     try:
         data = security.decode(body.token, "reset")
     except jwt.PyJWTError:

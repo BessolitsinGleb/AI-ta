@@ -30,6 +30,7 @@ export function renderTraceLine(ev) {
     const s = ev.summary || {};
     return `<li class="tr-check ${s.converges ? "ok" : "bad"}">${TOOL_LABELS.validate_plan}: ${s.passed} из ${s.total}${(ev.failed || []).length ? ". Не сходится: " + esc(ev.failed.join("; ")) : ""}</li>`;
   }
+  if (ev.type === "queued") return `<li class="tr-think">Сейчас много запросов — план начнём собирать, как освободится место</li>`;
   if (ev.type === "guard") return `<li class="tr-check bad">${TOOL_LABELS.precheck}: ${esc(GUARD_TEXT[ev.category] || ev.category)}</li>`;
   return "";
 }

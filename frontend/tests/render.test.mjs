@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { esc, humanDate, linksHtml, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, weatherIcon } from "../js/render.js";
+import { esc, fuelBadges, humanDate, linksHtml, renderLogbook, renderNotice, renderPlan, renderQuestions, renderTraceLine, weatherIcon } from "../js/render.js";
 
 const result = {
   status: "plan",
@@ -102,3 +102,13 @@ test("план связан с картой: день — фокус, точка
   assert.doesNotMatch(html, /data-map-item="0"/);  // у автобуса нет координат — на карту не ведёт
   assert.doesNotMatch(html, /data-map-item="lodging"/);
 });
+
+test("очередь и АЗС: честные подписи", () => {
+  assert.match(renderTraceLine({ type: "queued" }), /много запросов/);
+  const html = fuelBadges({ "АИ-92": true, "АИ-95": null, "ДТ": false, "Газ": true });
+  assert.match(html, /fuel yes[^>]*>АИ-92/);
+  assert.match(html, /fuel unk[^>]*title="АИ-95: в OSM не указано"/);
+  assert.match(html, /fuel no[^>]*>ДТ/);
+  assert.match(html, />Газ</);
+});
+

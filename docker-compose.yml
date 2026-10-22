@@ -7,6 +7,8 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0   # лимиты запросов и история диалогов
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8000}   # адрес для ссылок в письмах; scripts/lan.sh подставляет IP ноутбука
+      IP_LIMIT_SCALE: ${IP_LIMIT_SCALE:-1}   # >1, когда все клиенты за одним NAT (scripts/lan.sh)
+      PLAN_PARALLEL: ${PLAN_PARALLEL:-8}   # сколько планов собирается одновременно, остальные ждут в очереди
     ports:
       - "${PORT:-8000}:8000"
     volumes:

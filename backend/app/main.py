@@ -30,7 +30,7 @@ EXAMPLES = [
     "На 3 дня на машине в Хасанский район: море, бухта Витязь и «Земля леопарда»",
 ]
 
-_slots = asyncio.Semaphore(4)  # не больше 4 агентов одновременно — бережём ключ и открытые API
+_slots = asyncio.Semaphore(settings.plan_parallel)  # одновременно собирается ограниченное число планов — бережём ключ и открытые API
 
 
 @asynccontextmanager
@@ -125,10 +125,10 @@ def _version(v: str | None) -> str:
 
 def _limit_plans(request: Request, user) -> None:
     """Защита от спама: каждый план стоит денег. Счётчики в Redis — общие для всех копий приложения."""
-    ip = ratelimit.client_ip(request)
-    ratelimit.check(f"plan:ip:{ip}:min", settings.plan_limit_min, 60)
-    ratelimit.check(f"plan:ip:{ip}:hour", settings.plan_limit_hour, 3600)
-    if user is not None:
+    ratelimit.check_ip(request, "plan:ip:min", settings.plan_limit_min, 60)
+    ratelimit.check_ip(request, "plan:ip:hour", settings.plan_limit_hour, 3600)
+    if user is not None:  # у вошедших главный лимит — личный: за общим NAT IP-лимиты поднимают
+        ratelimit.check(f"plan:user:{user.id}:min", settings.plan_limit_min, 60)
         ratelimit.check(f"plan:user:{user.id}:hour", settings.plan_limit_user_hour, 3600)
 
 
@@ -188,6 +188,8 @@ async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
         await queue.put(ev)
 
     async def worker() -> None:
+        if _slots.locked():  # все места заняты — честно говорим, что ждём очереди
+            await queue.put({"type": "queued"})
         async with _slots:
             try:
                 result = await _run(req, version, user, hint, conv, on_event)

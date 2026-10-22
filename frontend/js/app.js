@@ -233,8 +233,7 @@ function mascotHtml(cls) {
   return `<div class="loading-art ${cls}">${state.mascot}</div>`;
 }
 
-function setLoading() {
-  const text = "Амба собирает план…";
+function setLoading(text = "Амба собирает план…") {
   $("#result").innerHTML = `<div class="loading">${mascotHtml("writing")}<p>${text}</p></div>`;
 }
 
@@ -289,10 +288,12 @@ function fuelPopup(s) {
 // Подписи не налезают друг на друга: по порядку плана показываем те, что помещаются, остальные — по наведению
 function updateLabels() {
   const shown = [];
+  const box = $("#map").getBoundingClientRect();
   document.querySelectorAll("#map .pin-label").forEach((el) => {
     el.classList.remove("label-hidden");
     const r = el.getBoundingClientRect();
-    const hit = shown.some((o) => r.left < o.right + 2 && r.right > o.left - 2 && r.top < o.bottom + 1 && r.bottom > o.top - 1);
+    const cut = r.right > box.right - 4 || r.left < box.left + 4 || r.top < box.top + 4 || r.bottom > box.bottom - 4;  // обрезалась бы краем
+    const hit = cut || shown.some((o) => r.left < o.right + 2 && r.right > o.left - 2 && r.top < o.bottom + 1 && r.bottom > o.top - 1);
     if (hit) el.classList.add("label-hidden"); else shown.push(r);
   });
 }
@@ -301,6 +302,8 @@ function drawMap(mp) {
   ensureMap();
   if (!state.map) return;
   state.layers.clearLayers();
+  const keepDay = state.mapSource === mp ? state.focusDay : null;  // тот же план в другом виде — выбранный день остаётся
+  state.mapSource = mp;
   const planDays = state.result?.plan?.days || [];
   state.mapDays = (mp?.days || []).map((day, d) => {
     const group = L.featureGroup();
@@ -335,7 +338,8 @@ function drawMap(mp) {
   })).addTo(state.layers);
   state.focusDay = null;
   renderLegend(mp);
-  fitMap(false);
+  if (keepDay != null && keepDay < state.mapDays.length) focusDay(keepDay);
+  else fitMap(false);
   updateLabels();
   setTimeout(() => state.map.invalidateSize(), 50);
 }
@@ -522,6 +526,10 @@ async function streamPlan(body) {
       if (!line) continue;
       const ev = JSON.parse(line.slice(6));
       if (ev.type === "start") showIntents(ev.intents);
+      else if (ev.type === "queued") {
+        addTrace(ev);
+        if (!$("#result").classList.contains("refining")) setLoading("Сейчас много запросов — вы в очереди, это займёт чуть дольше…");
+      }
       else if (ev.type === "result") return ev.result;
       else addTrace(ev);
     }

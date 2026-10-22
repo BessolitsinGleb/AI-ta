@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, Request
 
+from .config import settings
 from .store import store
 
 
@@ -14,6 +15,11 @@ def check(key: str, limit: int, window_s: int) -> None:
     count, retry = store.hit(f"rl:{key}:{window_s}", window_s)
     if count > limit:
         raise HTTPException(429, "Слишком много запросов. Попробуйте чуть позже.", headers={"Retry-After": str(retry)})
+
+
+def check_ip(request: Request, name: str, limit: int, window_s: int) -> None:
+    """Лимит на адрес клиента (с поправкой IP_LIMIT_SCALE для случая, когда все за одним NAT)."""
+    check(f"{name}:{client_ip(request)}", limit * settings.ip_limit_scale, window_s)
 
 
 def reset() -> None:

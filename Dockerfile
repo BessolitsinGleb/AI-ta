@@ -19,4 +19,6 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"PORT\"]}/api/health')" || exit 1
 
 # PORT задаёт хостинг (Railway, Render и т. п.); локально и на VM — 8000.
-CMD uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips="*"
+# X-Forwarded-For принимаем только от своего прокси: иначе любой клиент подставит чужой адрес и обойдёт лимиты.
+# За облачным балансировщиком (Railway, Render) задайте FORWARDED_ALLOW_IPS=* в настройках сервиса.
+CMD uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips="${FORWARDED_ALLOW_IPS:-127.0.0.1}"

@@ -91,9 +91,64 @@ def test_refresh_rotation_and_reuse_detection(client):
     r = client.post("/api/auth/refresh")
     assert r.status_code == 200 and r.json()["access_token"]
     assert client.cookies.get("amba_refresh") != old
+    _age_rotations(seconds=120)  # повтор не «соседняя вкладка», а через пару минут — похоже на кражу
     client.cookies.set("amba_refresh", old, path="/api/auth")  # подсовываем уже использованный токен
     assert client.post("/api/auth/refresh").status_code == 401
     assert client.post("/api/auth/refresh").status_code == 401  # и все сессии погашены
+
+
+def _age_rotations(seconds: int) -> None:
+    from datetime import timedelta
+
+    from app.db import RefreshSession, SessionLocal
+    with SessionLocal() as db:
+        for s in db.query(RefreshSession).filter(RefreshSession.rotated_at.isnot(None)):
+            s.rotated_at = s.rotated_at - timedelta(seconds=seconds)
+        db.commit()
+
+
+def test_two_tabs_refreshing_at_once_stay_signed_in(client):
+    signed_in(client)
+    cookie = client.cookies.get("amba_refresh")
+    tab2 = TestClient(app)
+    tab2.cookies.set("amba_refresh", cookie, path="/api/auth")  # вторая вкладка с той же cookie
+    assert client.post("/api/auth/refresh").status_code == 200
+    assert tab2.post("/api/auth/refresh").status_code == 200  # не «кража», а параллельная вкладка
+    assert client.post("/api/auth/refresh").status_code == 200  # первую вкладку не выкинуло
+
+
+def test_password_change_closes_tab_grace(client):
+    token = signed_in(client)
+    old = client.cookies.get("amba_refresh")
+    assert client.post("/api/auth/refresh").status_code == 200  # ротация: old ещё 30 с «соседняя вкладка»
+    r = client.post("/api/me/password", headers=auth(client.post("/api/auth/refresh").json()["access_token"]),
+                    json={"current_password": PW, "new_password": "NewTiger2026"})
+    assert r.status_code == 200 and token
+    thief = TestClient(app)
+    thief.cookies.set("amba_refresh", old, path="/api/auth")
+    assert thief.post("/api/auth/refresh").status_code == 401  # после смены пароля старые токены мертвы
+
+
+def test_old_database_gets_new_columns(tmp_path):
+    import sqlite3
+
+    from sqlalchemy import create_engine, inspect
+
+    from app import db as dbmod
+    path = tmp_path / "old.db"
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE refresh_sessions (jti VARCHAR(32) PRIMARY KEY, user_id VARCHAR(32), created_at DATETIME,"
+                " expires_at DATETIME, revoked_at DATETIME, user_agent VARCHAR(200))")
+    con.execute("INSERT INTO refresh_sessions (jti, user_id) VALUES ('a', 'u')")
+    con.commit()
+    con.close()
+    old_engine, dbmod.engine = dbmod.engine, create_engine(f"sqlite:///{path}")
+    try:
+        dbmod.init_db()
+        assert "rotated_at" in {c["name"] for c in inspect(dbmod.engine).get_columns("refresh_sessions")}
+    finally:
+        dbmod.engine = old_engine
+    assert sqlite3.connect(path).execute("SELECT jti FROM refresh_sessions").fetchone() == ("a",)  # данные целы
 
 
 def test_logout_revokes_session(client):

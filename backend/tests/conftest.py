@@ -24,6 +24,15 @@ from app.db import Base, engine  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
+def _no_real_dns(monkeypatch):
+    """Тесты без сети: домены «резолвятся» в публичный адрес, localhost — в 127.0.0.1."""
+    async def resolve(host):
+        return ["127.0.0.1"] if host == "localhost" else ["93.184.216.34"]
+
+    monkeypatch.setattr(linkcheck, "_resolve", resolve)
+
+
+@pytest.fixture(autouse=True)
 def _fresh_state():
     clear_cache()
     ratelimit.reset()

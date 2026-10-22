@@ -20,7 +20,9 @@ fi
 URL="http://$IP:$PORT"
 
 # PUBLIC_URL нужен, чтобы ссылки из писем (подтверждение почты, сброс пароля) открывались с телефона
-PUBLIC_URL="$URL" PORT="$PORT" docker compose up -d --build
+# Docker Desktop на Mac показывает приложению всех клиентов с одного адреса: лимиты «на IP» стали бы общими
+# на весь зал (5 регистраций в час). Поднимаем их; личные лимиты на пользователя и на почту остаются.
+PUBLIC_URL="$URL" PORT="$PORT" IP_LIMIT_SCALE="${IP_LIMIT_SCALE:-30}" docker compose up -d --build
 
 printf "Жду запуска"
 for _ in $(seq 1 60); do

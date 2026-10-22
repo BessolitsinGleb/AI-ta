@@ -53,3 +53,22 @@ def test_tomorrow_and_interests():
     it = parse_intents("Завтра с детьми в океанариум и к тиграм", WED)
     assert it.start_date == "2026-10-22"
     assert {"дети", "животные"} <= set(it.interests)
+
+
+@pytest.mark.parametrize("text,start,end,days", [
+    ("с 1 по 3 ноября на машине", "2026-11-01", "2026-11-03", 3),
+    ("1-3 ноября", "2026-11-01", "2026-11-03", 3),
+    ("с 30 октября по 2 ноября", "2026-10-30", "2026-11-02", 4),
+    ("29 октября пешком", "2026-10-29", "2026-10-29", None),
+    ("24.10 на велосипеде", "2026-10-24", "2026-10-24", None),
+    ("10 января на машине", "2027-01-10", "2027-01-10", None),  # январь уже прошёл — значит, следующий
+    ("в субботу и воскресенье", "2026-10-24", "2026-10-25", 2),
+])
+def test_calendar_dates_and_day_pairs(text, start, end, days):
+    it = parse_intents(text, WED)
+    assert (it.start_date, it.end_date, it.days) == (start, end, days)
+
+
+def test_two_digit_durations():
+    it = parse_intents("на 10 дней на машине по Приморью", WED)
+    assert it.days == it.max_days == 10
