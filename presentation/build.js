@@ -11,8 +11,8 @@ const ROOT = path.resolve(__dirname, "..");
 const IMG = path.join(ROOT, "docs", "img");
 const OUT = path.join(__dirname, "Amba_Travel_AI.pptx");
 const DEMO_URL = "https://amba-production-3ab7.up.railway.app";
-// Финальный QR — пасхалка: клип на Rutube, открывается и с VPN, и без.
-const FINAL_QR_URL = "https://rutube.ru/video/c6cc4d620b1d4338901770a44b3e82f4/";
+// Финальный QR — пасхалка docs/egg (GitHub Pages): клип без рекламы, сразу играет; запасная ссылка — Rutube.
+const FINAL_QR_URL = "https://bessolitsingleb.github.io/AI-ta/egg/";
 const REPO_URL = "github.com/BessolitsinGleb/AI-ta";
 
 const THEME = {
