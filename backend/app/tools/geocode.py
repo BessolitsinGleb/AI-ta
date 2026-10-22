@@ -12,14 +12,19 @@ _last_call = 0.0
 _rate_lock = asyncio.Lock()
 
 
-async def _nominatim_raw(query: str, viewbox: tuple[float, float, float, float], limit: int = 10) -> list[dict]:
-    """viewbox = (запад, север, восток, юг)."""
+async def nominatim_turn() -> None:
+    """Политика Nominatim — не чаще 1 запроса в секунду на всё приложение (поиск и адреса вместе)."""
     global _last_call
-    async with _rate_lock:  # политика Nominatim — не чаще 1 запроса в секунду
+    async with _rate_lock:
         wait = 1.0 - (time.time() - _last_call)
         if wait > 0:
             await asyncio.sleep(wait)
         _last_call = time.time()
+
+
+async def _nominatim_raw(query: str, viewbox: tuple[float, float, float, float], limit: int = 10) -> list[dict]:
+    """viewbox = (запад, север, восток, юг)."""
+    await nominatim_turn()
     w, n, e, s = viewbox
     return await cached_json(
         "GET",

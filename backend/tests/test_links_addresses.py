@@ -87,3 +87,19 @@ def test_address_format():
     assert format_address({"street": "Светланская улица", "housenumber": "1", "city": "Владивосток"}) == "Светланская улица, 1, Владивосток"
     assert format_address({"village": "Андреевка", "county": "Хасанский район"}) == "Андреевка"
     assert format_address({"street": "Аякс", "housenumber": "10", "locality": "Аякс"}) == "Аякс, 10"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_address_falls_back_to_nominatim(monkeypatch):
+    from app import address
+    from app.http import clear_cache
+
+    clear_cache()
+    monkeypatch.setattr(address, "_photon_down_until", 0.0)
+    respx.get(url__startswith=address.PHOTON).mock(side_effect=httpx.ConnectTimeout("photon down"))
+    respx.get(url__startswith=address.NOMINATIM).mock(return_value=httpx.Response(200, json={
+        "address": {"road": "Светланская улица", "house_number": "1", "city": "Владивосток"}}))
+    assert await address.reverse(43.1155, 131.8855) == "Светланская улица, 1, Владивосток"
+    assert address._photon_down_until > 0  # Photon 10 минут не ждём
+

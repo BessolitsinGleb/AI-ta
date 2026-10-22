@@ -1,13 +1,20 @@
-"""Адреса точек плана: обратное геокодирование Photon (данные OSM). Считается на сервере после плана — LLM-токены не тратятся."""
+"""Адреса точек плана: обратное геокодирование по данным OSM. Считается на сервере после плана — LLM-токены не тратятся.
+
+Основной сервис — Photon (быстрый, без жёсткого лимита). Если он лежит, берём Nominatim (не чаще раза в секунду).
+"""
 from __future__ import annotations
 
 import asyncio
+import time
 
 from .http import cached_json
 from .tools.base import ToolContext
+from .tools.geocode import nominatim_turn
 
 PHOTON = "https://photon.komoot.io/reverse"
+NOMINATIM = "https://nominatim.openstreetmap.org/reverse"
 PARALLEL = 4  # вежливо к общему сервису: не больше четырёх запросов разом
+_photon_down_until = 0.0  # Photon не ответил — 10 минут его не ждём
 
 
 def format_address(p: dict) -> str:
@@ -21,11 +28,27 @@ def format_address(p: dict) -> str:
     return ", ".join(parts)
 
 
+def from_nominatim(a: dict) -> dict:
+    """Поля адреса Nominatim → те же, что у Photon."""
+    return {"street": a.get("road") or a.get("pedestrian"), "housenumber": a.get("house_number"),
+            "city": a.get("city"), "town": a.get("town"), "village": a.get("village") or a.get("hamlet"),
+            "district": a.get("suburb"), "county": a.get("county")}
+
+
 async def reverse(lat: float, lon: float) -> str:
-    data = await cached_json("GET", PHOTON, params={"lat": f"{lat:.5f}", "lon": f"{lon:.5f}", "limit": 1},
-                             ttl=7 * 86400, timeout=4)
-    features = data.get("features") or []
-    return format_address(features[0].get("properties") or {}) if features else ""
+    global _photon_down_until
+    if time.time() > _photon_down_until:
+        try:
+            data = await cached_json("GET", PHOTON, params={"lat": f"{lat:.5f}", "lon": f"{lon:.5f}", "limit": 1},
+                                     ttl=7 * 86400, timeout=4)
+            features = data.get("features") or []
+            return format_address(features[0].get("properties") or {}) if features else ""
+        except Exception:  # таймаут, 5xx — переключаемся на запасной сервис
+            _photon_down_until = time.time() + 600
+    await nominatim_turn()
+    data = await cached_json("GET", NOMINATIM, params={"lat": f"{lat:.5f}", "lon": f"{lon:.5f}", "format": "jsonv2",
+                                                       "zoom": 18, "accept-language": "ru"}, ttl=7 * 86400, timeout=5)
+    return format_address(from_nominatim(data.get("address") or {}))
 
 
 async def add_addresses(plan: dict, ctx: ToolContext) -> None:
@@ -48,4 +71,4 @@ async def add_addresses(plan: dict, ctx: ToolContext) -> None:
 
     await asyncio.gather(*(one(it) for it in spots))
     if any(it.get("address") for it in spots):
-        ctx.sources.add("Photon (адреса, OpenStreetMap)")
+        ctx.sources.add("адреса: OpenStreetMap (Photon / Nominatim)")
