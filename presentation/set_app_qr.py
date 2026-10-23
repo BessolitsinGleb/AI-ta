@@ -1,4 +1,4 @@
-"""Перенаправить QR «Приложение» (слайд 11) на другой адрес и пересобрать PDF — без шаблона и полной сборки.
+"""Перенаправить QR «Приложение» (слайд «Ссылки») на другой адрес и пересобрать PDF — без шаблона и полной сборки.
 
     .venv/bin/python presentation/set_app_qr.py http://192.168.1.5:8000
 
@@ -16,14 +16,13 @@ from pptx import Presentation
 sys.path.insert(0, str(Path(__file__).parent))
 from build_tbank import OUT, export_pdf  # noqa: E402
 
-APP_SLIDE = 10  # слайд 11: «Сайт команды» слева, «Приложение» справа
-
-
-def app_qr(slide):
-    """QR приложения — картинка с таким именем; в старых сборках — самая правая картинка слайда."""
-    pics = [s for s in slide.shapes if s.shape_type == 13 and not s.is_placeholder]
-    named = [p for p in pics if p.name == "qr-app"]
-    return named[0] if named else max(pics, key=lambda p: p.left)
+def app_qr(prs):
+    """Слайд и картинка QR приложения: build_tbank называет её qr-app, номер слайда меняется вместе со сборкой."""
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.shape_type == 13 and shape.name == "qr-app":
+                return slide, shape
+    raise SystemExit("в презентации нет картинки qr-app — пересоберите её build_tbank.py")
 
 
 def main(url: str) -> None:
@@ -32,9 +31,7 @@ def main(url: str) -> None:
                     "{width: 800, margin: 1, color: {dark: '#333333', light: '#FFFFFF'}})", str(png), url],
                    cwd=Path(__file__).parent, check=True)
     prs = Presentation(str(OUT))
-    slide = prs.slides[APP_SLIDE]
-    pic = app_qr(slide)
-    pic.name = "qr-app"
+    slide, pic = app_qr(prs)
     rid = pic._element.blipFill.blip.rEmbed
     slide.part.related_part(rid)._blob = png.read_bytes()
     prs.save(str(OUT))

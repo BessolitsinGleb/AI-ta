@@ -65,7 +65,7 @@ def main(url: str) -> None:
         card.write_text(svg, encoding="utf-8")
 
     sys.path.insert(0, str(ROOT / "presentation"))
-    from set_app_qr import main as deck_qr  # noqa: E402 — QR на слайде 11 + PDF
+    from set_app_qr import main as deck_qr  # noqa: E402 — QR на слайде «Ссылки» + PDF
 
     deck_qr(url)
     print("Приложение →", url, "(сайт, визитка, презентация)")
