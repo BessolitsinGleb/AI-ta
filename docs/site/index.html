@@ -64,6 +64,7 @@
       <a href="#project">О проекте</a>
       <a href="#team">Команда</a>
       <a href="#links">Ссылки</a>
+      <a href="#feedback">Связаться</a>
       <a class="nav-cta" href="https://amba-qm59.onrender.com" target="_blank" rel="noreferrer">Открыть приложение <span aria-hidden="true">↗</span></a>
     </nav>
   </header>
@@ -161,6 +162,64 @@
           <p>Исходники, инструкция и замеры</p>
           <span class="qr-url">github.com/BessolitsinGleb/AI-ta</span>
         </a>
+      </div>
+    </section>
+
+
+    <section class="section feedback" id="feedback" data-scene="links">
+      <div class="feedback-grid">
+        <div class="feedback-intro">
+          <p class="eyebrow"><span class="eyebrow-dot orange"></span>Обратная связь</p>
+          <h2>Напишите<br>нам.</h2>
+          <p class="feedback-lead">Вопрос, идея, неточность в плане или хотите подключить Амбу к своему сервису — письмо придёт всей команде.</p>
+          <ul class="feedback-facts">
+            <li><b>1 день</b><span>отвечаем на почту или в Telegram</span></li>
+            <li><b>0 спама</b><span>адрес нужен только для ответа</span></li>
+          </ul>
+          <img class="feedback-mascot" src="assets/amba.svg" alt="" aria-hidden="true">
+        </div>
+
+        <form class="feedback-card" id="feedback-form" novalidate data-endpoint="https://formsubmit.co/ajax/ambaguide@gmail.com">
+          <div class="field-row">
+            <label class="field">
+              <span>Как вас зовут</span>
+              <input id="fb-name" name="name" type="text" autocomplete="name" maxlength="80" placeholder="Анна" required>
+              <small class="field-error" data-for="name"></small>
+            </label>
+            <label class="field">
+              <span>Почта или Telegram</span>
+              <input id="fb-contact" name="contact" type="text" autocomplete="email" maxlength="120" placeholder="anna@mail.ru или @anna" required>
+              <small class="field-error" data-for="contact"></small>
+            </label>
+          </div>
+          <fieldset class="field topics">
+            <legend>Тема</legend>
+            <div class="chips" role="radiogroup">
+              <label class="chip"><input type="radio" name="topic" value="Вопрос" checked><span>Вопрос</span></label>
+              <label class="chip"><input type="radio" name="topic" value="Идея"><span>Идея</span></label>
+              <label class="chip"><input type="radio" name="topic" value="Нашли ошибку"><span>Нашли ошибку</span></label>
+              <label class="chip"><input type="radio" name="topic" value="Сотрудничество"><span>Сотрудничество</span></label>
+            </div>
+          </fieldset>
+          <label class="field">
+            <span>Сообщение</span>
+            <textarea id="fb-message" name="message" rows="5" maxlength="2000" placeholder="Например: хочу план на майские в Хасанский район, но в нём не было бухты Витязь" required></textarea>
+            <small class="field-error" data-for="message"></small>
+          </label>
+          <input class="honey" type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <div class="feedback-actions">
+            <button class="button button-dark" type="submit" id="fb-submit">Отправить <span aria-hidden="true">→</span></button>
+            <p class="feedback-note">Нажимая «Отправить», вы соглашаетесь, что мы используем адрес только для ответа.</p>
+          </div>
+          <p class="feedback-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <div class="feedback-card feedback-done" id="feedback-done" hidden>
+          <img src="assets/amba.svg" alt="Амба радуется">
+          <h3>Спасибо!</h3>
+          <p>Письмо уже у команды. Ответим в течение дня — проверьте почту или Telegram.</p>
+          <button class="text-link" type="button" id="fb-again">Написать ещё <span aria-hidden="true">↺</span></button>
+        </div>
       </div>
     </section>
 
@@ -264,6 +323,74 @@
         }, { threshold: [0, .2, .45, .7], rootMargin: '-12% 0px -18% 0px' });
         scenes.forEach((scene) => sceneObserver.observe(scene));
       }
+
+      // Обратная связь: своя форма в стиле сайта, письмо отправляет FormSubmit (без бэкенда и регистрации).
+      const form = document.querySelector('#feedback-form');
+      const done = document.querySelector('#feedback-done');
+      const statusEl = form.querySelector('.feedback-status');
+      const submit = document.querySelector('#fb-submit');
+      const showError = (name, text) => {
+        const el = form.querySelector(`.field-error[data-for="${name}"]`);
+        el.textContent = text;
+        form.elements[name].setAttribute('aria-invalid', text ? 'true' : 'false');
+      };
+      const validate = () => {
+        const name = form.elements.name.value.trim();
+        const contact = form.elements.contact.value.trim();
+        const message = form.elements.message.value.trim();
+        const contactOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(contact) || /^@?[A-Za-z0-9_]{5,32}$/.test(contact) || /^\+?[\d\s()-]{10,18}$/.test(contact);
+        showError('name', name.length >= 2 ? '' : 'Напишите, как к вам обращаться');
+        showError('contact', contactOk ? '' : 'Нужна почта, @ник в Telegram или телефон');
+        showError('message', message.length >= 10 ? '' : 'Расскажите чуть подробнее — хотя бы пару слов');
+        return name.length >= 2 && contactOk && message.length >= 10;
+      };
+      form.addEventListener('input', (e) => {
+        if (e.target.getAttribute('aria-invalid') === 'true') validate();
+      });
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        statusEl.textContent = '';
+        statusEl.className = 'feedback-status';
+        if (!validate()) return;
+        const endpoint = form.dataset.endpoint;
+        if (!endpoint) {
+          statusEl.textContent = 'Форма вот-вот заработает. Пока напишите нам через GitHub — ссылка выше.';
+          statusEl.classList.add('is-error');
+          return;
+        }
+        const topic = form.elements.topic.value;
+        submit.disabled = true;
+        submit.firstChild.textContent = 'Отправляем… ';
+        try {
+          const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              _subject: `Амба · ${topic} от ${form.elements.name.value.trim()}`,
+              _template: 'table', _captcha: 'false', _honey: form.elements._honey.value,
+              Имя: form.elements.name.value.trim(), Контакт: form.elements.contact.value.trim(),
+              Тема: topic, Сообщение: form.elements.message.value.trim(),
+            }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || String(data.success) !== 'true') throw new Error(data.message || '');
+          form.hidden = true;
+          done.hidden = false;
+          done.querySelector('h3').focus?.();
+        } catch (err) {
+          statusEl.textContent = 'Не получилось отправить. Проверьте интернет и попробуйте ещё раз через минуту.';
+          statusEl.classList.add('is-error');
+        } finally {
+          submit.disabled = false;
+          submit.firstChild.textContent = 'Отправить ';
+        }
+      });
+      document.querySelector('#fb-again').addEventListener('click', () => {
+        form.reset();
+        done.hidden = true;
+        form.hidden = false;
+        form.elements.name.focus();
+      });
 
       // Амба откликается на нажатие: сжимается в месте касания, тянется туда и пищит, как резиновый нос игрушки.
       // Звук синтезируем сами (Web Audio), без чужих аудиофайлов.
