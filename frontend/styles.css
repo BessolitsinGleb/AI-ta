@@ -283,8 +283,14 @@ textarea:focus { outline: none; }
 .foot p { margin: 0; max-width: 80ch; }
 
 @media (max-width: 1100px) {
-  .workspace { grid-template-columns: 1fr; }
-  .col-side { position: static; }
+  /* одна колонка: карта сразу под переключателем вида, а не в самом низу после плана и чата */
+  .workspace { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
+  .col-main, .col-side { display: contents; }
+  .toolbar { order: 1; }
+  .map-panel { order: 2; }
+  #result { order: 3; }
+  .chat { order: 4; margin-top: 0; }
+  .trace-panel { order: 5; }
 }
 @media (max-width: 640px) {
   .topbar { padding: 14px 16px; }
@@ -301,7 +307,16 @@ textarea:focus { outline: none; }
   .paw-l { right: 86px; }
   .paw-r { right: 34px; }
   textarea { font-size: 18px; }
+  select, input, textarea { font-size: max(16px, 1em); }  /* меньше 16px — iPhone приближает страницу при вводе */
   .go { width: 100%; }
+  .plan { padding: 20px 16px; border-radius: var(--r-md); }
+  #map { height: 300px; }
+  .chat { padding: 18px 16px; }
+  .chat-form { flex-direction: column; }
+  .msg { max-width: 92%; }
+  .toolbar-actions { gap: 8px; }
+  .toolbar-actions .seg-btn { white-space: nowrap; padding-inline: 12px; }
+  .toolbar-actions .ghost-btn { white-space: nowrap; padding-inline: 12px; }
   .toolbar-actions { width: 100%; justify-content: space-between; }
   .day { padding-left: 0; }
   .day::before { display: none; }
@@ -443,3 +458,8 @@ textarea:focus { outline: none; }
 @media print { .chat { display: none !important; } }
 .toolbar-actions { flex-wrap: wrap; }
 .col-main, .col-side { min-width: 0; }
+
+/* Карта на телефоне: одним пальцем листаем страницу, двумя — двигаем и приближаем карту */
+.map-hint { position: absolute; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; text-align: center; font: 600 15px var(--font); color: #fff; background: rgba(15, 45, 58, .55); border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+.map-hint.show { opacity: 1; }
+#map { position: relative; }

@@ -253,7 +253,23 @@ function addTrace(ev) {
 
 function ensureMap() {
   if (state.map || typeof L === "undefined") return;
-  state.map = L.map("map", { zoomControl: true, attributionControl: true }).setView([43.4, 132.6], 7);
+  // на телефоне карта не перехватывает прокрутку: одним пальцем листается страница, двумя — карта
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+  state.map = L.map("map", { zoomControl: true, attributionControl: true, dragging: !touch })
+    .setView([43.4, 132.6], 7);
+  if (touch) {
+    const hint = document.createElement("div");
+    hint.className = "map-hint";
+    hint.textContent = "Двигайте карту двумя пальцами";
+    $("#map").appendChild(hint);
+    let hideHint = 0;
+    $("#map").addEventListener("touchmove", (e) => {
+      if (e.touches.length !== 1) { hint.classList.remove("show"); return; }
+      hint.classList.add("show");
+      clearTimeout(hideHint);
+      hideHint = setTimeout(() => hint.classList.remove("show"), 1200);
+    }, { passive: true });
+  }
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(state.map);
@@ -341,7 +357,11 @@ function drawMap(mp) {
   if (keepDay != null && keepDay < state.mapDays.length) focusDay(keepDay);
   else fitMap(false);
   updateLabels();
-  setTimeout(() => state.map.invalidateSize(), 50);
+  // размер карты мог измениться, пока строилась страница (на телефоне она над планом) — пересчитать и вписать маршрут
+  setTimeout(() => {
+    state.map.invalidateSize();
+    if (state.focusDay === null) fitMap(false);
+  }, 60);
 }
 
 function renderLegend(mp) {
