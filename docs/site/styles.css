@@ -212,6 +212,7 @@ h2 { margin-bottom: 0; font-size: clamp(36px, 4.7vw, 58px); line-height: 1.04; l
 .feedback-status { margin: 0; font-size: 13px; font-weight: 600; }
 .feedback-status:empty { display: none; }
 .feedback-status.is-error { padding: 12px 14px; border-radius: 14px; background: #fff1ea; color: #9a3412; }
+.feedback-status a { text-decoration: underline; text-underline-offset: 3px; }
 .feedback-grid > [hidden] { display: none; }
 .feedback-done { grid-column: 2; align-items: flex-start; justify-content: center; text-align: left; }
 .feedback-done img { width: 120px; height: 120px; object-fit: contain; }

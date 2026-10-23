@@ -416,12 +416,24 @@
             }),
           });
           const data = await resp.json().catch(() => ({}));
-          if (!resp.ok || String(data.success) !== 'true') throw new Error(data.message || '');
+          if (!resp.ok || String(data.success) !== 'true') {
+            const error = new Error(data.message || '');
+            error.activation = /activat/i.test(data.message || '');
+            throw error;
+          }
           form.hidden = true;
           done.hidden = false;
           done.querySelector('h3').focus?.();
         } catch (err) {
-          statusEl.textContent = 'Не получилось отправить. Проверьте интернет и попробуйте ещё раз через минуту.';
+          // запасной путь: то же письмо через почтовую программу, текст уже заполнен
+          const mailto = `mailto:ambaguide@gmail.com?subject=${encodeURIComponent(`Амба · ${topic}`)}&body=${encodeURIComponent(
+            `${form.elements.message.value.trim()}\n\n${form.elements.name.value.trim()}, ${form.elements.contact.value.trim()}`)}`;
+          statusEl.innerHTML = '';
+          statusEl.append(err.activation
+            ? 'Форма включается — попробуйте чуть позже или '
+            : 'Не получилось отправить. Попробуйте ещё раз или ');
+          const link = Object.assign(document.createElement('a'), { href: mailto, textContent: 'напишите нам на почту' });
+          statusEl.append(link, '.');
           statusEl.classList.add('is-error');
         } finally {
           submit.disabled = false;
