@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -31,6 +32,14 @@ EXAMPLES = [
 ]
 
 _slots = asyncio.Semaphore(settings.plan_parallel)  # одновременно собирается ограниченное число планов — бережём ключ и открытые API
+# Сбор плана идёт около минуты. Телефон за это время может оборвать соединение (свернули Telegram, погас экран,
+# сменилась сеть), поэтому агент доделывает план без клиента, а результат ждёт в хранилище: клиент заберёт его по id.
+JOB_TTL_S = 15 * 60
+_jobs: set[asyncio.Task] = set()  # держим ссылки, чтобы фоновые сборки не собрал сборщик мусора
+
+
+def _job_key(job_id: str) -> str:
+    return f"job:{job_id}"
 
 
 @asynccontextmanager
@@ -183,6 +192,9 @@ async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
     version = _version(req.version)
     user, hint, conv = await _prepare(req, request)  # 429/404 — обычным JSON, до открытия стрима
     queue: asyncio.Queue = asyncio.Queue()
+    job_id = uuid.uuid4().hex
+    owner = user.id if user else None
+    store.set_json(_job_key(job_id), {"owner": owner, "done": False}, JOB_TTL_S)
 
     async def on_event(ev: dict) -> None:
         await queue.put(ev)
@@ -193,30 +205,45 @@ async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
         async with _slots:
             try:
                 result = await _run(req, version, user, hint, conv, on_event)
-                await queue.put({"type": "result", "result": result})
             except Exception as exc:  # pragma: no cover — страховка, чтобы стрим не повис
-                await queue.put({"type": "result", "result": {"status": "error", "error": f"{type(exc).__name__}: {exc}"}})
-            finally:
-                await queue.put(None)
+                result = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+            store.set_json(_job_key(job_id), {"owner": owner, "done": True, "result": result}, JOB_TTL_S)
+            await queue.put({"type": "result", "result": result})
+            await queue.put(None)
+
+    task = asyncio.create_task(worker())
+    _jobs.add(task)
+    task.add_done_callback(_jobs.discard)
 
     async def gen():
-        task = asyncio.create_task(worker())
-        try:
-            while True:
-                try:
-                    ev = await asyncio.wait_for(queue.get(), timeout=15)
-                except asyncio.TimeoutError:
-                    yield ": ping\n\n"  # держим соединение за прокси
-                    continue
-                if ev is None:
-                    break
-                yield f"data: {json.dumps(ev, ensure_ascii=False, default=str)}\n\n"
-        finally:
-            if not task.done():
-                task.cancel()
+        yield f"data: {json.dumps({'type': 'job', 'id': job_id})}\n\n"
+        while True:
+            try:
+                ev = await asyncio.wait_for(queue.get(), timeout=10)
+            except asyncio.TimeoutError:
+                yield ": ping\n\n"  # держим соединение за прокси и мобильным браузером
+                continue
+            if ev is None:
+                break
+            yield f"data: {json.dumps(ev, ensure_ascii=False, default=str)}\n\n"
+        # клиент ушёл — генератор закроется, а сборка доработает и сохранит результат
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/plan/job/{job_id}")
+async def plan_job(job_id: str, request: Request) -> JSONResponse:
+    """Результат сборки, если поток оборвался: 202 — ещё собирается, 200 — готово."""
+    if len(job_id) != 32 or not all(c in "0123456789abcdef" for c in job_id):
+        raise HTTPException(404, "Сборка не найдена")
+    job = store.get_json(_job_key(job_id))
+    user, _ = await _account(request)
+    if not job or (job.get("owner") and job["owner"] != (user.id if user else None)):
+        raise HTTPException(404, "Сборка не найдена — соберите план заново")
+    if not job.get("done"):
+        return JSONResponse({"status": "running"}, status_code=202)
+    return JSONResponse({"status": "done", "result": job["result"]})
 
 
 app.include_router(accounts.router)

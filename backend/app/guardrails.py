@@ -45,11 +45,36 @@ OFF_TOPIC = re.compile(
     re.I,
 )
 
+# Мат и оскорбления: корни с приставками, но без ложных срабатываний на «небо», «себе», «хуже», «требует»
+PROFANITY = re.compile(
+    r"(?<![а-яё])(?:на|по|за|от|вы|у|о|об|при|раз|рас|до|про|под|из|недо|пере|съ|въ|отъ|разъ|подъ|объ)?(?:ху[йеёияю]|пизд|бля(?:[дт]|\b)|[её]б[аеиоуёлнт]|ебл|муда[кч]|мудил|залуп|гандон"
+    r"|долбо[её]б|пид[оа]р|шлюх|сучк|сук[аиу](?![а-яё])|дроч|манд[ау](?![а-яё])|говн|срань|сран[ыоа]|заеб|отъеб|выеб|въеб)",
+    re.I,
+)
+
+# Неприемлемые темы: секс-услуги, наркотики, насилие
+INAPPROPRIATE = re.compile(
+    r"секс|порн|интим[- ]?услуг|проститу|эскорт|бордел|стриптиз|наркот|закладк|мефедрон|героин|кокаин|амфетамин|гашиш"
+    r"|марихуан|спайс|\bсоли\s+купить|оружи[ея]\s+купить|взрывчат|суицид",
+    re.I,
+)
+
+# Доработка плана: просьба должна быть про поездку — места, еду, ночёвку, время, транспорт, темп, бюджет
+REFINE = re.compile(
+    r"убер|убра|добав|замен|помен|измен|перенес|перенос|сдвин|сократ|продл|вместо|без\s|ещё|еще|друг|дешев|дорож|бюджет"
+    r"|больше|меньше|раньше|позже|поздн|рано|утр|вечер|ночь|ноч[её]в|отел|гостиниц|кемпинг|палатк|кафе|ресторан|ед[аыуе]\b"
+    r"|поест|ужин|обед|завтрак|кухн|морепродукт|рыб|кофе|пляж|купа|гор[аыу]\b|водопад|парк|сафари|тигр|леопард|животн|экскурс"
+    r"|музе|истори|вид[ыа]?\b|фото|прогул|темп|спокойн|актив|отдых|устал|ребен|ребён|дет|собак|пешком|велосипед|машин|автобус"
+    r"|электричк|паром|такси|дорог|км|час|минут|день|дня|дней|суббот|воскрес|выходн|понедельн|вторник|сред[ау]\b|четверг|пятниц"
+    r"|завтра|сегодня|погод|дожд|холод|жар|тепл",
+    re.I,
+)
+
 
 @dataclass
 class GuardVerdict:
     allowed: bool
-    category: str = "ok"  # ok | off_topic | other_region | injection | too_long | empty
+    category: str = "ok"  # ok | off_topic | other_region | injection | profanity | inappropriate | not_refine | too_long | empty
     message: str = ""
 
 
@@ -57,12 +82,16 @@ REFUSALS = {
     "off_topic": "Я помогаю только с поездками по Приморскому краю. Напишите, куда и как хотите поехать, — соберу план.",
     "other_region": "Это за пределами Приморского края — туда маршрут не построю. Могу предложить поездку по Приморью: Владивосток, Находка, Хасан, Ханка, Сихотэ-Алинь.",
     "injection": "Правила не меняю: я планирую поездки по Приморью. Расскажите, куда хотите поехать.",
+    "profanity": "Давайте без грубостей 🙂 Напишите, куда и как хотите поехать по Приморью, — соберу план.",
+    "inappropriate": "С этим не помогу. Я планирую поездки по Приморью: места, дороги, ночёвку, кафе и погоду.",
+    "not_refine": "Это не похоже на правку поездки. Напишите, что поменять в плане: например, «убери музей», «добавь ужин у моря» или «перенеси на воскресенье».",
     "too_long": "Запрос слишком длинный. Опишите поездку в паре предложений.",
     "empty": "Запрос пустой. Напишите, куда и как хотите поехать.",
 }
 
 
-def precheck(query: str, max_chars: int = 600) -> GuardVerdict:
+def precheck(query: str, max_chars: int = 600, refine: bool = False) -> GuardVerdict:
+    """refine=True — сообщение в чате доработки готового плана: там нужна именно правка поездки."""
     q = (query or "").strip()
     if not q:
         return GuardVerdict(False, "empty", REFUSALS["empty"])
@@ -70,9 +99,15 @@ def precheck(query: str, max_chars: int = 600) -> GuardVerdict:
         return GuardVerdict(False, "too_long", REFUSALS["too_long"])
     if INJECTION.search(q):
         return GuardVerdict(False, "injection", REFUSALS["injection"])
+    if PROFANITY.search(q):
+        return GuardVerdict(False, "profanity", REFUSALS["profanity"])
+    if INAPPROPRIATE.search(q):
+        return GuardVerdict(False, "inappropriate", REFUSALS["inappropriate"])
     has_primorye = bool(PRIMORYE.search(q))
     if OTHER_REGIONS.search(q) and not has_primorye:
         return GuardVerdict(False, "other_region", REFUSALS["other_region"])
     if OFF_TOPIC.search(q) and not TRAVEL.search(q):
         return GuardVerdict(False, "off_topic", REFUSALS["off_topic"])
+    if refine and not (REFINE.search(q) or TRAVEL.search(q) or has_primorye):
+        return GuardVerdict(False, "not_refine", REFUSALS["not_refine"])
     return GuardVerdict(True)

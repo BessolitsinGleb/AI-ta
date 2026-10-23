@@ -221,7 +221,9 @@ async def run_agent(
     await emit({"type": "start", "version": ver.key, "intents": intents.dict()})
 
     if ver.prefilter:
-        verdict = precheck(f"{query}\n{answers_text}".strip(), settings.max_query_chars)  # ответы — тоже ввод пользователя
+        # ответы — тоже ввод пользователя; в доработке проверяем саму просьбу строже: она должна менять поездку
+        verdict = (precheck(query, settings.max_query_chars, refine=True) if refine
+                   else precheck(f"{query}\n{answers_text}".strip(), settings.max_query_chars))
         if not verdict.allowed:
             trace.append({"kind": "guard", "name": "precheck", "summary": f"отклонено пред-фильтром: {verdict.category}"})
             await emit({"type": "guard", "category": verdict.category})

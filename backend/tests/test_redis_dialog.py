@@ -89,6 +89,12 @@ def test_refine_plan_in_dialog(redis_store):
     assert off["status"] == "declined" and len(off["conversation"]["turns"]) == 6
     assert redis_store.get_json(f"conv:{conv['id']}")["plan"]["transport"] in ("train", "bus")  # план не потерян
 
+    chat = c.post("/api/plan", json={"query": "как дела?", "conversation_id": conv["id"]}).json()  # не правка поездки
+    assert chat["status"] == "declined" and chat["refusal"]["category"] == "not_refine"
+    rude = c.post("/api/plan", json={"query": "да пошёл ты нахуй", "conversation_id": conv["id"]}).json()
+    assert rude["status"] == "declined" and rude["refusal"]["category"] == "profanity"
+    assert redis_store.get_json(f"conv:{conv['id']}")["plan"]["transport"] in ("train", "bus")
+
 
 def test_unknown_or_foreign_dialog(redis_store):
     c = TestClient(app)

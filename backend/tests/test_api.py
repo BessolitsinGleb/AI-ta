@@ -44,9 +44,19 @@ def test_stream_emits_events_and_result():
         assert r.headers["content-type"].startswith("text/event-stream")
         events = [json.loads(line[6:]) for line in r.iter_lines() if line.startswith("data: ")]
     types = [e["type"] for e in events]
-    assert types[0] == "start" and types[-1] == "result"
+    assert types[0] == "job" and types[1] == "start" and types[-1] == "result"
     assert "tool" in types and "check" in types
     assert events[-1]["result"]["status"] == "plan"
+
+
+def test_stream_result_recoverable_by_job_id():
+    """Телефон оборвал поток — готовый план забирается по id сборки."""
+    with client.stream("POST", "/api/plan/stream", json={"query": "Пешком по Владивостоку завтра"}) as r:
+        events = [json.loads(line[6:]) for line in r.iter_lines() if line.startswith("data: ")]
+    job = client.get(f"/api/plan/job/{events[0]['id']}")
+    assert job.status_code == 200 and job.json()["result"]["status"] == "plan"
+    assert client.get("/api/plan/job/" + "0" * 32).status_code == 404
+    assert client.get("/api/plan/job/not-a-job").status_code == 404
 
 
 def test_extra_fields_rejected_without_echo():

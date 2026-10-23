@@ -532,42 +532,84 @@ function bindQuestions(result) {
 }
 
 // Стрим плана: события агента → в «летопись», финальный результат возвращается. Ошибки HTTP — с текстом сервера.
+// Телефон может оборвать поток (свернули Telegram, погас экран, сменилась сеть) — тогда забираем готовый план по id сборки.
 async function streamPlan(body) {
-  const resp = await fetch("/api/plan/stream", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await freshAuthHeader()) },
-    body: JSON.stringify({ version: $("#version").value || undefined, ...body }),
-  });
+  const payload = JSON.stringify({ version: $("#version").value || undefined, ...body });
+  let resp;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      resp = await fetch("/api/plan/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await freshAuthHeader()) },
+        body: payload,
+      });
+      break;
+    } catch (e) {  // запрос не ушёл: сервер просыпается или сеть мигнула — пробуем ещё пару раз
+      if (attempt >= 2) throw new Error("Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.");
+      await sleep(2500 * (attempt + 1));
+    }
+  }
   if (!resp.ok || !resp.body) {
     const data = await resp.json().catch(() => null);
     const err = new Error(typeof data?.detail === "string" ? data.detail : `Ошибка ${resp.status}`);
     err.status = resp.status;
     throw err;
   }
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx;
-    while ((idx = buf.indexOf("\n\n")) >= 0) {
-      const chunk = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      const line = chunk.split("\n").find((l) => l.startsWith("data: "));
-      if (!line) continue;
-      const ev = JSON.parse(line.slice(6));
-      if (ev.type === "start") showIntents(ev.intents);
-      else if (ev.type === "queued") {
-        addTrace(ev);
-        if (!$("#result").classList.contains("refining")) setLoading("Сейчас много запросов — вы в очереди, это займёт чуть дольше…");
+  let jobId = null;
+  try {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const line = chunk.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        const ev = JSON.parse(line.slice(6));
+        if (ev.type === "job") jobId = ev.id;
+        else if (ev.type === "start") showIntents(ev.intents);
+        else if (ev.type === "queued") {
+          addTrace(ev);
+          if (!$("#result").classList.contains("refining")) setLoading("Сейчас много запросов — вы в очереди, это займёт чуть дольше…");
+        }
+        else if (ev.type === "result") return ev.result;
+        else addTrace(ev);
       }
-      else if (ev.type === "result") return ev.result;
-      else addTrace(ev);
     }
+  } catch (e) {
+    if (!jobId) throw new Error("Связь оборвалась. Попробуйте ещё раз.");
   }
-  throw new Error("соединение оборвалось до результата");
+  if (!jobId) throw new Error("Связь оборвалась. Попробуйте ещё раз.");
+  return waitForJob(jobId);
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Поток оборвался, а Амба продолжает собирать план на сервере — ждём готовый результат (до 4 минут)
+async function waitForJob(jobId) {
+  if (!$("#result").classList.contains("refining")) setLoading("Связь прервалась, но Амба продолжает собирать план — ещё немного…");
+  const until = Date.now() + 4 * 60 * 1000;
+  let misses = 0;
+  while (Date.now() < until) {
+    await sleep(3000);
+    let r;
+    try {
+      r = await fetch(`/api/plan/job/${jobId}`, { headers: { ...(await freshAuthHeader()) } });
+    } catch (e) {  // сеть ещё не вернулась — ждём дальше
+      if (++misses > 20) break;
+      continue;
+    }
+    if (r.status === 202) continue;
+    const data = await r.json().catch(() => null);
+    if (r.ok && data?.result) return data.result;
+    throw new Error(typeof data?.detail === "string" ? data.detail : "Не получилось дождаться плана. Попробуйте ещё раз.");
+  }
+  throw new Error("План собирается слишком долго. Откройте «Мои поездки» чуть позже или попробуйте ещё раз.");
 }
 
 async function refine(message) {

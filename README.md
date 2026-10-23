@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Python-3.12-0F2D3A?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-агент-2E6B62?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/DeepSeek-LLM%20Proxy-3D5A66?style=for-the-badge" alt="DeepSeek через LLM Proxy">
-  <img src="https://img.shields.io/badge/тесты-172%20passed-2E6B62?style=for-the-badge" alt="Тесты">
+  <img src="https://img.shields.io/badge/тесты-197%20passed-2E6B62?style=for-the-badge" alt="Тесты">
 </p>
 
 <p align="center">
@@ -247,7 +247,7 @@ make eval       # замеры трёх версий → eval/results
 
 | Набор | Тестов | Что покрывает |
 |---|---|---|
-| `backend/tests` | 153 | тулы (внешние API замоканы), проверка плана, агентный цикл, API и стрим, фильтр, Redis-лимиты и диалоги (fakeredis), аккаунты: регистрация, почта, JWT-сессии, сброс пароля, анкета, история, рекомендации |
+| `backend/tests` | 178 | тулы (внешние API замоканы), проверка плана, агентный цикл, API и стрим, фильтр, Redis-лимиты и диалоги (fakeredis), аккаунты: регистрация, почта, JWT-сессии, сброс пароля, анкета, история, рекомендации |
 | `frontend/tests` | 10 | рендер плана и журнала, ссылки, вопросы, экранирование |
 | `e2e` | 9 | настоящий браузер: запрос → вопросы → план со ссылками → карта; регистрация → письмо → анкета → идеи → поездка сохранена → профиль; доработка плана в чате |
 
