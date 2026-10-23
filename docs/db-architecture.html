@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Амба — архитектура данных</title>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #1d2a30; --muted: #5f6f76; --line: #d9dfe2; --paper: #f3f5f6; --yellow: #ffdd2d; --orange: #f0641e; --sea: #0f2d3a; --kelp: #2e6b62; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); font-family: Onest, system-ui, sans-serif; color: var(--ink); }
+  .board { position: relative; width: 1600px; height: 1000px; padding: 48px 56px; }
+  h1 { margin: 0; font-size: 40px; letter-spacing: -.03em; }
+  .sub { margin: 6px 0 0; color: var(--muted); font-size: 17px; }
+  .app { position: absolute; left: 56px; top: 150px; width: 1488px; height: 64px; border-radius: 18px; background: var(--sea); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 18px; font-weight: 700; }
+  .app span { font-weight: 500; color: #b9cdd4; font-size: 15px; }
+  .zone { position: absolute; top: 252px; border-radius: 26px; padding: 22px 22px 18px; }
+  .zone h2 { margin: 0 0 4px; font-size: 21px; letter-spacing: -.02em; }
+  .zone .where { margin: 0 0 16px; font-size: 13.5px; color: var(--muted); }
+  .sql { left: 56px; width: 1000px; height: 700px; background: #fff; border: 2px solid var(--yellow); }
+  .redis { left: 1080px; width: 464px; height: 330px; background: #fff; border: 2px solid #f6b8a0; }
+  .files { left: 1080px; top: 606px; width: 464px; height: 346px; background: #fff; border: 2px solid #b7d3cd; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; margin-bottom: 10px; }
+  .t-sql { background: var(--yellow); }
+  .t-redis { background: #ffe1d4; color: #9a3412; }
+  .t-files { background: #dcebe8; color: var(--kelp); }
+  .table { position: absolute; width: 300px; border-radius: 16px; overflow: hidden; border: 1.5px solid var(--line); background: #fff; }
+  .table header { background: var(--ink); color: #fff; padding: 10px 14px; font-weight: 700; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  .table header small { font-weight: 500; color: #b9c4c8; font-size: 12px; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; gap: 4px; padding: 5.5px 14px; font-size: 13.5px; border-top: 1px solid #eef1f2; }
+  .row:nth-child(even) { background: #fafbfb; }
+  .k { font-size: 10.5px; font-weight: 800; color: var(--orange); align-self: center; }
+  .k.fk { color: var(--kelp); }
+  .k.uk { color: #8a6d00; }
+  .ty { color: var(--muted); font-size: 12.5px; }
+  .group { padding: 4px 14px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: #f4f6f7; border-top: 1px solid #eef1f2; }
+  #users { left: 78px; top: 384px; }
+  #sessions { left: 720px; top: 384px; width: 314px; }
+  #trips { left: 720px; top: 642px; width: 314px; }
+  .rel { position: absolute; font-size: 12.5px; font-weight: 700; color: var(--kelp); background: #fff; padding: 2px 8px; border-radius: 999px; border: 1.5px solid #b7d3cd; }
+  .note { position: absolute; left: 420px; width: 280px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .note b { color: var(--ink); }
+  .kv { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+  .kv code { font: 700 14px ui-monospace, Menlo, monospace; color: var(--ink); }
+  .kv p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+  .kv .ttl { float: right; font-size: 12px; font-weight: 700; color: #9a3412; }
+  .fl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13.5px; }
+  .fl code { font: 600 13px ui-monospace, Menlo, monospace; }
+  .fl span { color: var(--muted); text-align: right; }
+  .fl p { grid-column: 1 / -1; margin: 0 0 7px; font-size: 12px; color: var(--muted); }
+  svg.lines { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+</style>
+</head>
+<body>
+<div class="board">
+  <h1>Амба — архитектура данных</h1>
+  <p class="sub">Постоянные данные — в реляционной БД, временные — в Redis, справочники края — в JSON-файлах приложения</p>
+
+  <div class="app">FastAPI · агент · аккаунты (SQLAlchemy 2) <span>backend/app/db.py · store.py · data/*.json</span></div>
+
+
+  <section class="zone sql">
+    <div class="tag t-sql">Реляционная БД</div>
+    <h2>Postgres на Render · SQLite локально</h2>
+    <p class="where">amba-db (Render) · data/amba.db · новые столбцы добавляются при запуске без потери данных</p>
+  </section>
+
+  <div class="table" id="users">
+    <header>users <small>аккаунт + анкета</small></header>
+    <div class="row"><span class="k">PK</span>id<span class="ty">varchar(32)</span></div>
+    <div class="row"><span class="k uk">UK</span>email<span class="ty">varchar(254)</span></div>
+    <div class="row"><span></span>password_hash<span class="ty">bcrypt</span></div>
+    <div class="row"><span></span>name<span class="ty">varchar(80)</span></div>
+    <div class="row"><span></span>email_verified_at<span class="ty">timestamptz?</span></div>
+    <div class="row"><span></span>token_version<span class="ty">int</span></div>
+    <div class="row"><span></span>created_at<span class="ty">timestamptz</span></div>
+    <div class="group">анкета интересов</div>
+    <div class="row"><span></span>onboarded<span class="ty">bool</span></div>
+    <div class="row"><span></span>home_city<span class="ty">varchar(80)</span></div>
+    <div class="row"><span></span>interests<span class="ty">json[]</span></div>
+    <div class="row"><span></span>transport<span class="ty">json[]</span></div>
+    <div class="row"><span></span>companions<span class="ty">varchar(20)</span></div>
+    <div class="row"><span></span>budget<span class="ty">varchar(20)</span></div>
+    <div class="row"><span></span>pace<span class="ty">varchar(20)</span></div>
+  </div>
+
+  <div class="table" id="sessions">
+    <header>refresh_sessions <small>входы</small></header>
+    <div class="row"><span class="k">PK</span>jti<span class="ty">varchar(32)</span></div>
+    <div class="row"><span class="k fk">FK</span>user_id → users.id<span class="ty">cascade</span></div>
+    <div class="row"><span></span>created_at<span class="ty">timestamptz</span></div>
+    <div class="row"><span></span>expires_at<span class="ty">+30 дней</span></div>
+    <div class="row"><span></span>revoked_at<span class="ty">timestamptz?</span></div>
+    <div class="row"><span></span>rotated_at<span class="ty">timestamptz?</span></div>
+    <div class="row"><span></span>user_agent<span class="ty">varchar(200)</span></div>
+  </div>
+
+  <div class="table" id="trips">
+    <header>trips <small>мои поездки</small></header>
+    <div class="row"><span class="k">PK</span>id<span class="ty">varchar(32)</span></div>
+    <div class="row"><span class="k fk">FK</span>user_id → users.id<span class="ty">cascade</span></div>
+    <div class="row"><span></span>created_at<span class="ty">индекс</span></div>
+    <div class="row"><span></span>query<span class="ty">text</span></div>
+    <div class="row"><span></span>title · area<span class="ty">varchar</span></div>
+    <div class="row"><span></span>start_date · days<span class="ty">str · int</span></div>
+    <div class="row"><span></span>transport<span class="ty">varchar(20)</span></div>
+    <div class="row"><span></span>converges · favorite<span class="ty">bool</span></div>
+    <div class="row"><span></span>result<span class="ty">json — весь план</span></div>
+  </div>
+
+  <span class="rel" style="left: 520px; top: 392px; z-index: 6;">1 : N</span>
+  <span class="rel" style="left: 520px; top: 652px; z-index: 6;">1 : N</span>
+
+  <p class="note" style="top: 448px;"><b>Вход:</b> access-JWT на 15 мин в базе не хранится. Refresh — в httpOnly-cookie, его <b>jti</b> — строка в refresh_sessions: ротация при каждом обновлении, повтор старого токена отзывает все входы.</p>
+  <p class="note" style="top: 566px;"><b>Смена пароля:</b> token_version + 1 — старые ссылки сброса и все сессии перестают работать.</p>
+  <p class="note" style="top: 712px;"><b>result</b> хранит весь ответ агента: план по дням, карту, проверки и ссылки — поездка открывается без нового запроса к модели. Удаление аккаунта каскадом удаляет входы и поездки.</p>
+
+  <section class="zone redis">
+    <div class="tag t-redis">Redis · Key Value</div>
+    <h2>Временные данные</h2>
+    <p class="where">amba-redis (Render) · без Redis — память процесса</p>
+    <div class="kv"><span class="ttl">24 ч</span><code>amba:conv:{id}</code><p>диалог доработки плана: владелец, запрос, ответы, сжатый план, реплики, trip_id</p></div>
+    <div class="kv"><span class="ttl">окно</span><code>amba:rl:{ключ}:{окно}</code><p>лимиты: планы на IP и пользователя, вход, регистрация, письма</p></div>
+  </section>
+
+  <section class="zone files">
+    <div class="tag t-files">JSON · только чтение</div>
+    <h2>Справочники края</h2>
+    <p class="where">backend/app/data</p>
+    <div class="fl">
+      <code>fuel_osm.json</code><span>385 АЗС</span><p>снимок OpenStreetMap: бренд, топливо, часы, адрес</p>
+      <code>places.json</code><span>41 место</span><p>часы, выходные, длительность визита, на улице или нет</p>
+      <code>transport.json</code><span>15 · 16</span><p>остановки и маршруты: автобусы, электрички, паромы</p>
+      <code>lodging.json · events.json</code><span>21 · 8</span>
+      <code>gazetteer.json · fuel_offline.json</code><span>справочник</span>
+    </div>
+  </section>
+  <svg class="lines" viewBox="0 0 1600 1000">
+    <defs>
+      <marker id="crow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path d="M0 6 L12 0 M0 6 L12 6 M0 6 L12 12" stroke="#2e6b62" stroke-width="1.8" fill="none"/></marker>
+      <marker id="one" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path d="M2 0 L2 12 M6 0 L6 12" stroke="#2e6b62" stroke-width="1.8"/></marker>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#9aa8ad"/></marker>
+    </defs>
+    <!-- приложение → хранилища -->
+    <path d="M556 214 V250" stroke="#9aa8ad" stroke-width="2" marker-end="url(#arr)"/>
+    <path d="M1312 214 V250" stroke="#9aa8ad" stroke-width="2" marker-end="url(#arr)"/>
+    <path d="M1544 214 C1580 214 1580 640 1546 640" stroke="#9aa8ad" stroke-width="2" fill="none" stroke-dasharray="5 5" marker-end="url(#arr)"/>
+    <!-- users 1 — N refresh_sessions -->
+    <path d="M378 404 H718" stroke="#2e6b62" stroke-width="2.2" marker-start="url(#one)" marker-end="url(#crow)" fill="none"/>
+    <!-- users 1 — N trips -->
+    <path d="M378 444 H398 V664 H718" stroke="#2e6b62" stroke-width="2.2" marker-start="url(#one)" marker-end="url(#crow)" fill="none"/>
+  </svg>
+</div>
+</body>
+</html>
