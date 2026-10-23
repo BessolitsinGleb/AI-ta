@@ -284,13 +284,15 @@ textarea:focus { outline: none; }
 
 @media (max-width: 1100px) {
   /* одна колонка: карта сразу под переключателем вида, а не в самом низу после плана и чата */
-  .workspace { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
+  .workspace { display: flex; flex-direction: column; align-items: stretch; gap: 14px; margin-top: 28px; }
+  .workspace > * , .col-main > *, .col-side > * { width: 100%; min-width: 0; }  /* ширина не зависит от содержимого: пустая карта тоже во всю строку */
   .col-main, .col-side { display: contents; }
   .toolbar { order: 1; }
   .map-panel { order: 2; }
   #result { order: 3; }
   .chat { order: 4; margin-top: 0; }
   .trace-panel { order: 5; }
+  .workspace:not(.has-route) .map-panel { display: none; }  /* карта появляется вместе с маршрутом */
 }
 @media (max-width: 640px) {
   .topbar { padding: 14px 16px; }

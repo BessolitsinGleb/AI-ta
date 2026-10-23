@@ -275,6 +275,18 @@ function ensureMap() {
   }).addTo(state.map);
   state.layers = L.layerGroup().addTo(state.map);
   state.map.on("zoomend moveend", updateLabels);
+  // поворот телефона, появление плана, панель браузера — карта пересчитывает размер сама
+  if ("ResizeObserver" in window) {
+    let last = "";
+    new ResizeObserver(([entry]) => {
+      const size = `${Math.round(entry.contentRect.width)}x${Math.round(entry.contentRect.height)}`;
+      if (size === last) return;
+      last = size;
+      state.map.invalidateSize();
+      if (state.mapDays?.length && state.focusDay === null) fitMap(false);
+      else if (!state.mapDays?.length) state.map.setView([43.4, 132.6], 7);
+    }).observe($("#map"));
+  }
 }
 
 // ---------- карта: дни — отдельные слои, легенда — переключатели, план и карта связаны ----------
@@ -318,6 +330,7 @@ function drawMap(mp) {
   ensureMap();
   if (!state.map) return;
   state.layers.clearLayers();
+  $("#workspace").classList.toggle("has-route", Boolean(mp?.days?.length));  // на телефоне пустую карту не показываем
   const keepDay = state.mapSource === mp ? state.focusDay : null;  // тот же план в другом виде — выбранный день остаётся
   state.mapSource = mp;
   const planDays = state.result?.plan?.days || [];
@@ -596,6 +609,7 @@ async function ask(query, answers) {
   $("#ask").classList.add("busy");
   $("#trace-panel").open = true;
   $("#workspace").hidden = false;
+  $("#workspace").classList.remove("has-route");
   $("#trace").innerHTML = "";
   showIntents(null);
   setLoading();
